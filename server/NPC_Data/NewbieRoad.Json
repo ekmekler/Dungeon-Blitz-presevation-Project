@@ -760,7 +760,7 @@
     "v": 0,
     "team": 1,
     "facing_left": false,
-    "Level": 50,
+    "level": 50,
     "set_timing_flag": true,
     "show_appearance_effect": true,
     "PetTypeID": 1,

@@ -49,6 +49,25 @@ level_registry = {}
 char_tokens = {}
 token_char   = {}
 extended_sent_map = {}  # user_id -> bool
+level_npcs = {}  # { "LevelName": {eid: npc_dict, ...}, ... }
+
+def ensure_level_npcs(level_name):
+    """
+    Ensure NPCs for this level are loaded/spawned once.
+    Returns the dict of NPCs for this level.
+    """
+    if level_name not in level_npcs:
+        try:
+            npcs = load_npc_data_for_level(level_name)
+            npc_map = {}
+            for npc in npcs:
+                npc_map[npc["id"]] = npc
+            level_npcs[level_name] = npc_map
+            print(f"[LEVEL] Spawned {len(npc_map)} NPCs for {level_name}")
+        except Exception as e:
+            print(f"[LEVEL] Error loading NPCs for {level_name}: {e}")
+            level_npcs[level_name] = {}
+    return level_npcs[level_name]
 
 #with open("saves/ac89b54f094c.json", "r", encoding="utf-8") as f:
     #DEV_DUMMY_CHAR = json.load(f)["characters"][0]
@@ -106,17 +125,26 @@ class ClientSession:
     def __init__(self, conn, addr):
         self.conn = conn
         self.addr = addr
+
+        # Authentication / account
         self.user_id = None
-        self.char_list = []
         self.authenticated = False
-        self.player_data = {}
-        self.current_character = None
+        self.char_list = []           # list of characters belonging to this user
+        self.current_character = None # name of active character
+        self.current_char_dict = None # dict of active character’s data
+
+        # World state
         self.current_level = None
         self.entry_level = None
         self.world_loaded = False
-        self.spawned_npcs = []
-        self.entities = {}
-        self.clientEntID = None
+        self.clientEntID = None       # entity ID assigned to the player
+
+        # Entities / NPCs
+        self.entities = {}            # {eid: props} for all tracked entities in this session
+        self.spawned_npcs = []        # list of NPC dicts spawned in this session
+
+        # Misc
+        self.player_data = {}
         self.running = True
 
     def stop(self):
@@ -466,19 +494,20 @@ def handle_client(session: ClientSession):
                 else:
                     print(f"[{session.addr}] Skipping 0xF5 packet: no character selected")
                 #TODO...
-                # Force NPC load temporarily For testing
-                # we will remove this and implement it properly once we are sure Send_Entity_Data is working properly
-                try:
-                    npcs = load_npc_data_for_level(session.current_level)
-                    for npc in npcs:
+                npcs = ensure_level_npcs(session.current_level)
+
+                # Send NPCs to the new player only
+                for npc in npcs.values():
+                    try:
                         payload = Send_Entity_Data(npc)
                         conn.sendall(struct.pack(">HH", 0x0F, len(payload)) + payload)
+                        # Save them in the player's session entity map too
                         session.entities[npc["id"]] = npc
-                        session.spawned_npcs.append(npc)
+                    except Exception as e:
+                        print(f"[{session.addr}] Error sending NPC {npc['id']} to {session.current_level}: {e}")
 
-                    print(f"[{session.addr}] NPCs manually triggered after world update")
-                except Exception as e:
-                    print(f"[{session.addr}] Error spawning NPCs: {e}")
+                print(f"[{session.addr}] NPCs synced for level {session.current_level}")
+
 
             # Level Transfer request
             elif pkt == 0x1D:
@@ -783,7 +812,7 @@ def handle_client(session: ClientSession):
                 handle_change_look(session, data, all_sessions)
             elif pkt == 0xBA:# Done
                 payload = data[4:]
-                handle_apply_dyes(session, payload)
+                handle_apply_dyes(session, payload, all_sessions)
             ############################################
 
 
@@ -815,7 +844,7 @@ def handle_client(session: ClientSession):
             elif pkt == 0xB0:# Done
                 handle_rune_packet(session, data) # equips runes on weapon slots
             elif pkt == 0x31:# Done
-                handle_gear_packet(session, data)
+                handle_gear_packet(session, data, all_sessions)
             elif pkt == 0x30:# Done
                 handle_update_equipment(session, data)
             ############################################

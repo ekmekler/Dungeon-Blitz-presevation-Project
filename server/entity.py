@@ -261,7 +261,7 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
 
 
         # 5e) Player level and Talent processing loop
-        level = entity.get("Level", 0)
+        level = entity.get("level", 0)
         bb.write_method_6(level, Entity.MAX_CHAR_LEVEL_BITS)
         if bb.debug:
             bb.debug_log.append(f"level={level}")

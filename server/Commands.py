@@ -6,13 +6,14 @@ import random
 import secrets
 import time
 
+import missions
 from Character import save_characters, build_paperdoll_packet
 from accounts import build_popup_packet
 from bitreader import BitReader
 from constants import GearType, EntType, class_64, class_1, DyeType, class_118, method_277, \
     class_111, class_1_const_254, class_8, class_3, \
     get_ability_info, load_building_data, find_building_data, class_66, LinkUpdater, PowerType, Entity, Game, class_13, \
-    index_to_node_id, door
+    index_to_node_id, door, class_119
 from BitBuffer import BitBuffer
 from constants import get_dye_color
 from entity import Send_Entity_Data
@@ -467,6 +468,8 @@ def handle_gear_packet(session, raw_data):
     save_characters(session.user_id, session.char_list)
     print(f"[Save] slot {slot} updated with gear {gear_id}, inventory count = {len(inv)}")
 
+
+
 def handle_rune_packet(session, raw_data):
     payload = raw_data[4:]
     br = BitReader(payload)
@@ -617,9 +620,8 @@ def send_look_update_packet(session, entity_id, head, hair, mouth, face, gender,
 
 def handle_change_look(session, raw_data, all_sessions):
     """
-    Handle the look change request from the client (e.g., packet 0x8E),
-    update both the live entity and the saved character data, persist,
-    and broadcast the change.
+    Handle the look change request from the client (packet 0x8E).
+    Updates live entity, saved character data, persists, and broadcasts.
     """
     # ─── (1) Parse incoming packet ────────────────────────────────────────────────
     payload = raw_data[4:]  # skip type+length
@@ -635,35 +637,41 @@ def handle_change_look(session, raw_data, all_sessions):
 
     entity_id = session.clientEntID
 
-    # ─── (2) In‑memory entity update ─────────────────────────────────────────────
-    ent_states = getattr(session, "entity_states", None)
-    if ent_states and entity_id in ent_states:
-        ent = ent_states[entity_id]
-        ent["headSet"]   = head
-        ent["hairSet"]   = hair
-        ent["mouthSet"]  = mouth
-        ent["faceSet"]   = face
-        ent["gender"]    = gender
-        ent["hairColor"] = hair_color
-        ent["skinColor"] = skin_color
+    # ─── (2) In-memory entity update ─────────────────────────────────────────────
+    if entity_id in session.entities:
+        ent = session.entities[entity_id]
+        ent.update({
+            "headSet": head,
+            "hairSet": hair,
+            "mouthSet": mouth,
+            "faceSet": face,
+            "gender": gender,
+            "hairColor": hair_color,
+            "skinColor": skin_color,
+        })
 
-    # ─── (3) Update per‑character saved data ────────────────────────────────────
-    for char in session.player_data.get("characters", []):
+    # ─── (3) Update per-character saved data ────────────────────────────────────
+    updated = False
+    for char in session.char_list:
         if char.get("name") == session.current_character:
-            char["headSet"]   = head
-            char["hairSet"]   = hair
-            char["mouthSet"]  = mouth
-            char["faceSet"]   = face
-            char["gender"]    = gender
-            char["hairColor"] = hair_color
-            char["skinColor"] = skin_color
+            char.update({
+                "headSet": head,
+                "hairSet": hair,
+                "mouthSet": mouth,
+                "faceSet": face,
+                "gender": gender,
+                "hairColor": hair_color,
+                "skinColor": skin_color,
+            })
+            updated = True
             break
-    else:
-        print(f"[Look] ERROR: character {session.current_character} not found")
+
+    if not updated:
+        print(f"[Look] ERROR: character {session.current_character} not found in char_list")
         return
 
     # ─── (4) Persist to disk ─────────────────────────────────────────────────────
-    save_characters(session.user_id, session.player_data["characters"])
+    save_characters(session.user_id, session.char_list)
     print(f"[Save] Look updated for {session.current_character}")
 
     # ─── (5) Send update back to requester ──────────────────────────────────────
@@ -685,6 +693,7 @@ def handle_change_look(session, raw_data, all_sessions):
                 head, hair, mouth, face,
                 gender, hair_color, skin_color
             )
+
 
 
 def handle_create_gearset(session, raw_data):
@@ -1275,6 +1284,9 @@ def handle_request_door_state(session, data, conn):
     Handle packet 0x41: client requests the state of a door.
     Server replies with 0x42 (door state + target).
     """
+    import missions  # make sure mission defs are loaded
+    missions.load_mission_defs()
+
     if len(data) < 4:
         return
 
@@ -1291,53 +1303,55 @@ def handle_request_door_state(session, data, conn):
         print(f"[{session.addr}] [0x41] Failed to parse door request: {e}")
         return
 
-    # 1) Default response: closed door
     door_state = door.DOORSTATE_CLOSED
     door_target = ""
     star_rating = None
 
-    # 2) Resolve configured door for this level
     door_info = DOOR_MAP.get((session.current_level, door_id))
-    if door_info is not None:
-        # ---- Case: static target (string path) ----
-        if isinstance(door_info, str) and not door_info.startswith("mission:"):
-            door_state = door.DOORSTATE_STATIC
-            door_target = door_info
+    char = next((c for c in session.char_list if c.get("name") == session.current_character), None)
 
-        # ---- Case: mission door ----
-        elif isinstance(door_info, str) and door_info.startswith("mission:"):
+    if door_info and isinstance(door_info, str):
+        # Determine the mission ID
+        if door_info.startswith("mission:"):
             try:
-                mission_id = door_info.split(":", 1)[1]
+                mission_id = int(door_info.split(":", 1)[1])
             except Exception:
                 mission_id = None
+        else:
+            # Check if this static-looking door corresponds to a dungeon in mission defs
+            mission_id = next(
+                (m["id"] for m in missions._MISSION_DEFS_BY_ID.values() if m.get("Dungeon") == door_info),
+                None
+            )
 
-            # Lookup this character's mission progress
-            char = next((c for c in session.char_list
-                         if c.get("name") == session.current_character), None)
-            mission_data = {}
-            if char:
-                mission_data = char.get("missions", {}).get(str(mission_id), {})
-
-            # If the mission has state==2 (completed), mark as repeat
-            if mission_data.get("state") == 2:  # client Mission.const_72
+        if char and mission_id is not None:
+            # Get saved mission state from the character
+            mission_data = char.get("missions", {}).get(str(mission_id), {})
+            if mission_data.get("state") == 2:
                 door_state = door.DOORSTATE_MISSIONREPEAT
-                door_target = ""  # client fills this based on mission
-                star_rating = mission_data.get("Tier", 0)  # or use .get("highscore")
+                star_rating = mission_data.get("Tier", 0)
             else:
                 door_state = door.DOORSTATE_MISSION
-                door_target = ""  # client shows dungeon name
+            door_target = door_info
         else:
-            # Fallback: static, no target
+            # Fallback if no mission or char
             door_state = door.DOORSTATE_STATIC
-            door_target = ""
+            door_target = door_info
+    else:
+        # Fallback for non-string or missing door_info
+        door_state = door.DOORSTATE_STATIC
+        door_target = ""
 
-    # 3) Build reply
+    # Build and send the reply
     bb = BitBuffer()
-    bb.write_method_4(door_id)         # door id
-    bb.write_method_91(door_state)     # door state
-    bb.write_method_13(door_target)    # target name (if any)
+    bb.write_method_4(door_id)
+    bb.write_method_91(door_state)
+    bb.write_method_13(door_target)
     if door_state == door.DOORSTATE_MISSIONREPEAT and star_rating is not None:
-        bb.write_method_6(star_rating, 5)  # client expects var_2671 (5 bits)
+        bb.write_method_6(star_rating, class_119.const_228)
+
+    print(f"[DEBUG] Door request: level={session.current_level}, id={door_id}, "
+          f"info={door_info}, state={door_state}, target='{door_target}'")
 
     payload = bb.to_bytes()
     response = struct.pack(">HH", 0x42, len(payload)) + payload
@@ -1711,15 +1725,7 @@ def handle_cancel_upgrade(session, data):
     if mem:
         mem["buildingUpgrade"] = char["buildingUpgrade"].copy()
 
-    # Tell client cancel succeeded (0xE3)
-    try:
-        bb = BitBuffer()
-        bb.write_method_6(building_id, 5)
-        payload = bb.to_bytes()
-        session.conn.sendall(struct.pack(">HH", 0xE3, len(payload)) + payload)
-        print(f"[{session.addr}] Sent 0xE3 cancel-ack for buildingID={building_id}")
-    except Exception as e:
-        print(f"[{session.addr}] [0xDB] failed to send 0xE3: {e}")
+
 
 
 def handle_building_claim(session, data):
@@ -2051,19 +2057,17 @@ def _send_error(conn, msg):
 
 
 
-def handle_apply_dyes(session, payload):
+def handle_apply_dyes(session, payload, all_sessions):
     br = BitReader(payload)
     try:
         entity_id = br.read_method_4()
         dyes_by_slot = {}
         for slot in range(1, EntType.MAX_SLOTS):
-            has_pair = br.read_method_20(1)
-            if has_pair:
+            if br.read_method_20(1):
                 d1 = br.read_method_20(DyeType.BITS)
                 d2 = br.read_method_20(DyeType.BITS)
                 dyes_by_slot[slot - 1] = (d1, d2)
 
-        # This is NOT a preview flag. It's the "use idols" boolean from OnApplyDyes(..., param2)
         pay_with_idols = bool(br.read_method_20(1))
 
         primary_dye = br.read_method_20(DyeType.BITS) if br.read_method_20(1) else None
@@ -2072,115 +2076,125 @@ def handle_apply_dyes(session, payload):
         print(f"[Dyes] ERROR parsing dye packet: {e}")
         return
 
-    print(f"[Dyes] entity={entity_id}, dyes_by_slot={dyes_by_slot}, pay_with_idols={pay_with_idols}, shirt={primary_dye}, pants={secondary_dye}")
+    print(f"[Dyes] entity={entity_id}, dyes_by_slot={dyes_by_slot}, "
+          f"pay_with_idols={pay_with_idols}, shirt={primary_dye}, pants={secondary_dye}")
 
-    for char in session.char_list:
-        if char.get("name") != session.current_character:
+    # ─── Work directly with the current character ───
+    char = session.current_char_dict
+    if not char:
+        print(f"[Dyes] ERROR: current_char_dict is None for {session.addr}")
+        return
+
+    eq = char.setdefault("equippedGears", [])
+    inv = char.setdefault("inventoryGears", [])
+
+    # Cost tables
+    level = int(char.get("level", char.get("mExpLevel", 1)) or 1)
+    g_idx = min(max(level, 0), len(Entity.Dye_Gold_Cost) - 1)
+    i_idx = min(max(level, 0), len(Entity.Dye_Idols_Cost) - 1)
+    per_gold = Entity.Dye_Gold_Cost[g_idx]
+    per_idol = Entity.Dye_Idols_Cost[i_idx]
+
+    # Detect gear dye changes
+    current_dyes_by_slot = {idx: tuple(gear.get("colors", [0, 0])) for idx, gear in enumerate(eq)}
+
+    slots_changed = 0
+    individual_dyes_changed = 0
+    for slot, (new_d1, new_d2) in dyes_by_slot.items():
+        if slot >= len(eq):
             continue
+        gear = eq[slot]
+        if not gear or gear.get("gearID", 0) == 0:
+            continue
+        old_d1, old_d2 = current_dyes_by_slot.get(slot, (0, 0))
+        changed = 0
+        if new_d1 != old_d1:
+            individual_dyes_changed += 1
+            changed = 1
+        if new_d2 != old_d2:
+            individual_dyes_changed += 1
+            changed = 1
+        slots_changed += changed
 
-        eq = char.setdefault("equippedGears", [])
-        inv = char.setdefault("inventoryGears", [])
+    charge_units = individual_dyes_changed
+    gold_cost = per_gold * charge_units
+    idol_cost = per_idol * charge_units
 
-        level = int(char.get("level", char.get("mExpLevel", 1)) or 1)
-        g_idx = min(max(level, 0), len(Entity.Dye_Gold_Cost) - 1)
-        i_idx = min(max(level, 0), len(Entity.Dye_Idols_Cost) - 1)
-        per_gold = Entity.Dye_Gold_Cost[g_idx]
-        per_idol = Entity.Dye_Idols_Cost[i_idx]
+    print(f"[Dyes] Level={level}, per-dye={per_gold}g/{per_idol}i  units={charge_units}  "
+          f"total_gold={gold_cost}  total_idols={idol_cost}")
+    print(f"[Dyes] Bal before: gold={char.get('gold',0)} idols={char.get('mammothIdols',0)}")
 
-        # Load current dyes to detect changes
-        current_dyes_by_slot = {idx: tuple(gear.get("colors", [0, 0])) for idx, gear in enumerate(eq)}
+    # --- Shirt/pants are always free ---
+    shirt_changed = False
+    pants_changed = False
+    if primary_dye is not None:
+        c = get_dye_color(primary_dye)
+        if c is not None and c != char.get("shirtColor"):
+            char["shirtColor"] = c
+            shirt_changed = True
+    if secondary_dye is not None:
+        c = get_dye_color(secondary_dye)
+        if c is not None and c != char.get("pantColor"):
+            char["pantColor"] = c
+            pants_changed = True
 
-        slots_changed = 0
-        individual_dyes_changed = 0
-        for slot, (new_d1, new_d2) in dyes_by_slot.items():
-            if slot >= len(eq):
-                continue
-            gear = eq[slot]
-            if not gear or gear.get("gearID", 0) == 0:
-                continue
-            old_d1, old_d2 = current_dyes_by_slot.get(slot, (0, 0))
-            changed = 0
-            if new_d1 != old_d1:
-                individual_dyes_changed += 1
-                changed = 1
-            if new_d2 != old_d2:
-                individual_dyes_changed += 1
-                changed = 1
-            slots_changed += changed
+    # No changes at all?
+    if charge_units == 0 and not shirt_changed and not pants_changed:
+        print("[Dyes] No changes detected — nothing to charge")
+        send_dye_sync_packet(session, entity_id, dyes_by_slot,
+                             char.get("shirtColor"), char.get("pantColor"))
+        return
 
-        # We charge per individual dye by default (match client’s UI math)
-        charge_units = individual_dyes_changed
-        gold_cost = per_gold * charge_units
-        idol_cost = per_idol * charge_units
-
-        print(f"[Dyes] Level={level}, per-dye={per_gold}g/{per_idol}i  units={charge_units}  total_gold={gold_cost}  total_idols={idol_cost}")
-        print(f"[Dyes] Bal before: gold={char.get('gold',0)} idols={char.get('mammothIdols',0)}")
-
-        # No changes? Just sync and exit
-        if charge_units == 0:
-            print("[Dyes] No changes detected — nothing to charge")
-            send_dye_sync_packet(session, entity_id, dyes_by_slot, char.get("shirtColor"), char.get("pantColor"))
-            return
-
-        # Currency enforcement: follow what the client chose
+    # Charge if needed
+    if charge_units > 0:
         if pay_with_idols:
             if char.get("mammothIdols", 0) < idol_cost:
-                print(f"[Dyes] ERROR: Not enough idols. Have {char.get('mammothIdols',0)}, need {idol_cost}")
+                print(f"[Dyes] ERROR: Not enough idols")
                 return
-            char["mammothIdols"] = char.get("mammothIdols", 0) - idol_cost
+            char["mammothIdols"] -= idol_cost
             print(f"[Dyes] Charged {idol_cost} idols")
-            # Tell client to update Mammoth Idols UI immediately
             send_premium_purchase(session, "Dye", idol_cost)
         else:
             if char.get("gold", 0) < gold_cost:
-                print(f"[Dyes] ERROR: Not enough gold. Have {char.get('gold',0)}, need {gold_cost}")
+                print(f"[Dyes] ERROR: Not enough gold")
                 return
-            # Client already did local gold deduction; server still authoritatively deducts
-            char["gold"] = char.get("gold", 0) - gold_cost
+            char["gold"] -= gold_cost
             print(f"[Dyes] Charged {gold_cost} gold")
 
-        # Apply new dyes to equipped + mirror to inventory
-        for slot, (d1, d2) in dyes_by_slot.items():
-            if slot < len(eq):
-                eq_slot = eq[slot]
-                if not eq_slot or eq_slot.get("gearID", 0) == 0:
-                    continue
-                eq_slot["colors"] = [d1, d2]
-                gear_id = eq_slot.get("gearID")
-                for g in inv:
-                    if g.get("gearID") == gear_id:
-                        g["colors"] = [d1, d2]
-                        break
-                else:
-                    inv.append(eq_slot.copy())
+    # Apply dyes to equipment
+    for slot, (d1, d2) in dyes_by_slot.items():
+        if slot < len(eq):
+            eq_slot = eq[slot]
+            if not eq_slot or eq_slot.get("gearID", 0) == 0:
+                continue
+            eq_slot["colors"] = [d1, d2]
+            gear_id = eq_slot.get("gearID")
+            for g in inv:
+                if g.get("gearID") == gear_id:
+                    g["colors"] = [d1, d2]
+                    break
+            else:
+                inv.append(eq_slot.copy())
 
-        # Shirt/pants colors (free)
-        if primary_dye is not None:
-            c = get_dye_color(primary_dye)
-            if c is not None:
-                char["shirtColor"] = c
-        if secondary_dye is not None:
-            c = get_dye_color(secondary_dye)
-            if c is not None:
-                char["pantColor"] = c
+    # Persist
+    save_characters(session.user_id, session.char_list)
+    session.player_data["characters"] = session.char_list
 
-        # Persist + in-memory session copy
-        save_characters(session.user_id, session.char_list)
-        session.player_data["characters"] = session.char_list
+    print(f"[Save] Dyes saved. New balances: gold={char.get('gold',0)} idols={char.get('mammothIdols',0)}")
 
-        print(f"[Save] Dyes saved. New balances: gold={char.get('gold',0)} idols={char.get('mammothIdols',0)}")
-
-        # Tell client about the actual applied dyes
+    # Sync to self + broadcast
+    for target in [session] + [
+        o for o in all_sessions
+        if o is not session and o.world_loaded and o.current_level == session.current_level
+    ]:
         send_dye_sync_packet(
-            session,
+            target,
             entity_id,
             dyes_by_slot,
             char.get("shirtColor"),
             char.get("pantColor"),
         )
-        return
 
-    print(f"[Dyes] ERROR: character {session.current_character} not found")
 
 
 
@@ -2904,115 +2918,180 @@ def handle_linkupdater(session, data, all_sessions):
     except Exception as e:
         print(f"[{session.addr}] [PKTA2] Error parsing link-sync: {e}")
 
+def build_entity_dict(eid, char, props):
+    """
+    Build a dictionary for Send_Entity_Data packet.
+    Works for both joiner (new spawn) and existing entities.
+    """
+    ent_dict = {
+        "id": eid,
+        "name": char.get("name", props.get("ent_name", "")) if char else props.get("ent_name", ""),
+        "is_player": True if char else bool(props.get("is_player", False)),
+        "x": int(props.get("pos_x", 0)),
+        "y": int(props.get("pos_y", 0)),
+        "v": int(props.get("velocity_x", 0)),
+        "team": int(props.get("team", 1)),
+    }
+
+    # Add appearance only if player with char info
+    if char:
+        ent_dict.update({
+            "class": char.get("class", ""),
+            "gender": char.get("gender", ""),
+            "headSet": char.get("headSet", ""),
+            "hairSet": char.get("hairSet", ""),
+            "mouthSet": char.get("mouthSet", ""),
+            "faceSet": char.get("faceSet", ""),
+            "hairColor": char.get("hairColor", 0),
+            "skinColor": char.get("skinColor", 0),
+            "shirtColor": char.get("shirtColor", 0),
+            "pantColor": char.get("pantColor", 0),
+            "equippedGears": char.get("equippedGears", []),
+            "abilities": char.get("learnedAbilities", []),
+            "level": char.get("level", 1),
+            "Talent_id": char.get("MasterClass", 0),
+            "equippedMount": char.get("equippedMount", 0),
+        })
+
+    return ent_dict
+
+
+def send_existing_entities_to_joiner(joiner, all_sessions):
+    """
+    Send spawn packets (Send_Entity_Data) ONLY for players in the same level
+    to the joining player.
+    NPCs are skipped and should be spawned separately by the level loader.
+    """
+    for other in all_sessions:
+        if other is joiner:
+            continue
+        if not other.world_loaded or other.current_level != joiner.current_level:
+            continue
+
+        # Only send the entity that belongs to the player's character
+        if other.clientEntID and other.clientEntID in other.entities:
+            eprops = other.entities[other.clientEntID]
+
+            char = next((c for c in other.char_list if c.get("name") == other.current_character), None)
+            ent_dict = build_entity_dict(other.clientEntID, char, eprops)
+
+            try:
+                pkt = Send_Entity_Data(ent_dict)
+                framed = struct.pack(">HH", 0x0F, len(pkt)) + pkt
+                joiner.conn.sendall(framed)
+                print(f"[JOIN] Sent player {ent_dict['name']} (eid={other.clientEntID}) → {joiner.addr}")
+            except Exception as ex:
+                print(f"[JOIN] Error sending player {ent_dict['name']} to {joiner.addr}: {ex}")
 
 
 def handle_entity_full_update(session, data, all_sessions):
     """
     Handle a full entity spawn/update (packet type 0x08) from a client.
-    Parses the entity data, learns the client's own entity ID, maintains a server-side
-    entity map, and broadcasts the same packet to other clients in the same level.
+    - Parses and stores entity info.
+    - Marks player entity IDs.
+    - Sends 0x0F spawn packets so players see each other.
+    - Broadcasts raw 0x08 packets for movement/state sync.
     """
-
-
-    # Extract payload (skip packet type and length)
     payload = data[4:]
     br = BitReader(payload, debug=True)
 
     try:
-        # Read core fields
-        entity_id = br.read_method_9()
+        # ── Parse fields ──
+        entity_id  = br.read_method_9()
         pos_x      = br.read_method_24()
         pos_y      = br.read_method_24()
         velocity_x = br.read_method_24()
-        ent_name   = br.read_method_13()
-        # Use correct bit width for team (matches client’s Entity.TEAM_BITS)
-        TEAM_BITS = Entity.TEAM_BITS # adjust if client uses different value
-        team       = br.read_method_6(TEAM_BITS)
-        is_player  = bool(br.read_method_15())
-        # y_offset uses AS3 method_706 → read via signed prefix encoding
-        y_offset   = br.read_method_739()
+        ent_name   = br.read_method_26()
 
-        # Read optional cue data
+        team       = br.read_method_20(Entity.TEAM_BITS)
+        is_player  = bool(br.read_method_15())
+        y_offset   = br.read_method_706()
+
+        # Optional cue data
         has_cue = bool(br.read_method_15())
         cue_data = {}
         if has_cue:
             if bool(br.read_method_15()):
-                cue_data['character_name'] = br.read_method_13()
+                cue_data["character_name"] = br.read_method_13()
             if bool(br.read_method_15()):
-                cue_data['DramaAnim'] = br.read_method_13()
+                cue_data["DramaAnim"] = br.read_method_13()
             if bool(br.read_method_15()):
-                cue_data['SleepAnim'] = br.read_method_13()
+                cue_data["SleepAnim"] = br.read_method_13()
 
-        # Optional summoner
         has_summoner = bool(br.read_method_15())
         summoner_id = br.read_method_9() if has_summoner else None
 
-        # Optional power
         has_power = bool(br.read_method_15())
         power_id  = br.read_method_9() if has_power else None
 
-        # State and flags
-        # Use correct bit width for entity state (matches client’s Entity.const_316)
-        STATE_BITS = Entity.const_316  # adjust to actual number of state bits
-        ent_state = br.read_method_6(STATE_BITS)
-        b_left    = bool(br.read_method_15())
-        b_running = bool(br.read_method_15())
-        b_jumping = bool(br.read_method_15())
-        b_dropping = bool(br.read_method_15())
+        ent_state   = br.read_method_20(Entity.const_316)
+        b_left      = bool(br.read_method_15())
+        b_running   = bool(br.read_method_15())
+        b_jumping   = bool(br.read_method_15())
+        b_dropping  = bool(br.read_method_15())
         b_backpedal = bool(br.read_method_15())
 
-        # 1) Learn client's own entity ID
+        # Track client’s entity ID
         if is_player and session.clientEntID is None:
             session.clientEntID = entity_id
             print(f"[{session.addr}] [PKT08] Learned clientEntID = {entity_id}")
 
-        # 2) Build properties dict
+        # Build props
         props = {
-            'pos_x': pos_x,
-            'pos_y': pos_y,
-            'velocity_x': velocity_x,
-            'ent_name': ent_name,
-            'team': team,
-            'is_player': is_player,
-            'y_offset': y_offset,
-            'cue_data': cue_data,
-            'summoner_id': summoner_id,
-            'power_id': power_id,
-            'ent_state': ent_state,
-            'b_left': b_left,
-            'b_running': b_running,
-            'b_jumping': b_jumping,
-            'b_dropping': b_dropping,
-            'b_backpedal': b_backpedal
+            "pos_x": pos_x,
+            "pos_y": pos_y,
+            "velocity_x": velocity_x,
+            "ent_name": ent_name,
+            "team": team,
+            "is_player": is_player,
+            "y_offset": y_offset,
+            "cue_data": cue_data,
+            "summoner_id": summoner_id,
+            "power_id": power_id,
+            "ent_state": ent_state,
+            "b_left": b_left,
+            "b_running": b_running,
+            "b_jumping": b_jumping,
+            "b_dropping": b_dropping,
+            "b_backpedal": b_backpedal,
         }
-        # Nicely print parsed entity properties
+
         #print(f"[{session.addr}] [PKT08] Parsed entity {entity_id}:")
         #pprint.pprint(props, indent=4)
 
-        # 3) Add or update server-side map
-        if entity_id in session.entities:
-            session.entities[entity_id].update(props)
-        else:
-            session.entities[entity_id] = props
-            #print(f"[{session.addr}] [PKT08] Added new entity {entity_id}")
+        # Update server-side map
+        session.entities[entity_id] = props
 
-        # 4) Mark world as loaded once first batch is received
+        # First-time world load for this player
         if not session.world_loaded:
             session.world_loaded = True
+            send_existing_entities_to_joiner(session, all_sessions)
 
-        # 5) Broadcast raw packet to peers
+            # Broadcast THIS player’s spawn to others
+            char = next((c for c in session.char_list if c.get("name") == session.current_character), None)
+            if char:
+                ent_dict = build_entity_dict(entity_id, char, props)
+                try:
+                    pkt = Send_Entity_Data(ent_dict)
+                    framed = struct.pack(">HH", 0x0F, len(pkt)) + pkt
+                    for other in all_sessions:
+                        if other is not session and other.world_loaded and other.current_level == session.current_level:
+                            other.conn.sendall(framed)
+                            print(f"[JOIN] Broadcasted Send_Entity_Data for {ent_dict['name']} → {other.addr}")
+                except Exception as e:
+                    print(f"[JOIN] Failed to build/broadcast Send_Entity_Data for new player: {e}")
+
+        # Always forward raw 0x08 packet for movement sync
         for other in all_sessions:
             if other is not session and other.world_loaded and other.current_level == session.current_level:
                 other.conn.sendall(data)
-                # Optionally log broadcast:
-                #print(f"[{session.addr}] [PKT08] Broadcasted to {other.addr}")
+                print(f"[{session.addr}] [PKT08] Broadcasted raw packet to {other.addr}")
 
     except Exception as e:
         print(f"[{session.addr}] [PKT08] Error parsing packet: {e}")
         if br.debug:
             for log_line in br.get_debug_log():
                 print(log_line)
-
 
 def handle_entity_incremental_update(session, data, all_sessions):
     # Only handle 0x07
@@ -3034,7 +3113,7 @@ def handle_entity_incremental_update(session, data, all_sessions):
         delta_y = br.read_method_45()
         delta_vx = br.read_method_45()
 
-        print(f"delta_x:{delta_x} delta_y : {delta_y} : delta_vx : {delta_vx} ")
+        #print(f"delta_x:{delta_x} delta_y : {delta_y} : delta_vx : {delta_vx} ")
         # 3) Read state & flags
         STATE_BITS = Entity.const_316
         ent_state = br.read_method_6(STATE_BITS)
@@ -3091,7 +3170,7 @@ def handle_entity_incremental_update(session, data, all_sessions):
                     save_characters(session.user_id, session.char_list)
                     break
 
-        print(f"[{session.addr}] [PKT07] | Entity_ID:{entity_id} | Moved to =({new_x},{new_y}), state={ent_state}")
+        #print(f"[{session.addr}] [PKT07] | Entity_ID:{entity_id} | Moved to =({new_x},{new_y}), state={ent_state}")
 
         # 8) Broadcast raw packet to peers
         for other in all_sessions:

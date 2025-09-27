@@ -40,22 +40,22 @@ def load_mission_defs(path: str = "data/MissionTypes.json") -> None:
         if mid <= 0:
             continue
 
-        # existing fields (client-side flags)
         is_achievement = _is_truthy(row.get("Achievement"))
         complete_count = max(1, _parse_int(row.get("CompleteCount", 1)))
         is_timed = (
             _is_truthy(row.get("Timed"))
-            or bool(row.get("Dungeon"))  # treat any Dungeon as timed/ranked
+            or bool(row.get("Dungeon"))
         )
 
+        # Include Dungeon key here
         defs[mid] = {
             "id": mid,
             "Tier": is_achievement,
             "highscore": complete_count,
             "Time": is_timed,
+            "Dungeon": row.get("Dungeon")  # <-- added
         }
 
-        # NEW: store NPC names and skit texts for dialogue lookup
         extra[mid] = {
             "ContactName": row.get("ContactName"),
             "ReturnName":  row.get("ReturnName"),
@@ -71,6 +71,7 @@ def load_mission_defs(path: str = "data/MissionTypes.json") -> None:
     _MISSION_DEFS_BY_ID = defs
     _MISSION_EXTRA_BY_ID = extra
     _MISSION_MAX_ID = max_id
+
 
 def get_mission_extra(mid: int) -> dict:
     if _MISSION_EXTRA_BY_ID is None:

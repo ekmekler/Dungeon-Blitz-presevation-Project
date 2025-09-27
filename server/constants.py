@@ -117,9 +117,9 @@ class Bossfight:
 
 
 class Mission:
-    const_213 = 0 # Mission in progress
-    const_58  = 1 # mission claimed
-    const_72  = 2 # mission is ready
+    const_213 = 0 # Not started
+    const_58  = 1 # In progress
+    const_72  = 2 # Completed
 
 class class_119:
     const_1398 = 10
