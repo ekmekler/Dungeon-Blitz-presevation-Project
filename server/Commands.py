@@ -593,8 +593,8 @@ def send_look_update_packet(session, entity_id, head, hair, mouth, face, gender,
         mouth: Mouth appearance string.
         face: Face appearance string.
         gender: Gender string.
-        shirt_color: Shirt color value (24-bit uint).
-        pant_color: Pant color value (24-bit uint).
+        hair_color: Hair color value (24-bit uint).
+        skin_color: Skin color value (24-bit uint).
     """
     # Create a BitBuffer to build the payload
     bb = BitBuffer()

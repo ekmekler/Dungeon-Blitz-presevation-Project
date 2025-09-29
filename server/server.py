@@ -4,6 +4,7 @@ import os
 import json
 import socket, struct, hashlib, sys, time, secrets, threading
 
+import bitreader
 from Brain import tick_npc_brains
 from accounts import get_or_create_user_id, load_accounts, _SAVES_DIR, is_character_name_taken, build_popup_packet
 from Character import (
@@ -482,17 +483,6 @@ def handle_client(session: ClientSession):
                 conn.sendall(welcome)
                 session.clientEntID = token
                 print(f"[{session.addr}] Welcome: {char['name']} (token {token}) on level {session.current_level}, pos=({new_x},{new_y})")
-                if session.current_character and session.char_list:
-                    char = next((c for c in session.char_list if c["name"] == session.current_character), None)
-                    if char and session.current_level and "crafttown" in session.current_level.lower():
-                        gears_list = get_inventory_gears(char)
-                        print(f"[{session.addr}] Sending 0xF5 packet with {len(gears_list)} gears for Armory")
-                        packet = build_level_gears_packet(gears_list)
-                        conn.sendall(packet)
-                    else:
-                        print(f"[{session.addr}] Skipping 0xF5 packet: not in CraftTown or no character")
-                else:
-                    print(f"[{session.addr}] Skipping 0xF5 packet: no character selected")
                 #TODO...
                 npcs = ensure_level_npcs(session.current_level)
 
@@ -508,6 +498,22 @@ def handle_client(session: ClientSession):
 
                 print(f"[{session.addr}] NPCs synced for level {session.current_level}")
 
+
+            elif pkt == 0xF4:
+                payload = data[4:]
+                br = BitReader(payload, debug=False)
+                try:
+                    var_2744 = br.read_method_9()
+                    print(f"[0xF4] Client sent var_2744={var_2744}, raw={payload.hex()}")
+                    if session.current_character:
+                        char = next((c for c in session.char_list if c["name"] == session.current_character), None)
+                        if char:
+                            gears_list = get_inventory_gears(char)
+                            packet = build_level_gears_packet(gears_list)
+                            session.conn.sendall(packet)
+                            print(f"[0xF4] Sent 0xF5 Armory gear list ({len(gears_list)} items)")
+                except Exception as e:
+                    print(f"[0xF4] Error parsing: {e}, raw={payload.hex()}")
 
             # Level Transfer request
             elif pkt == 0x1D:
@@ -570,10 +576,6 @@ def handle_client(session: ClientSession):
                 }
                 # 7b) Determine coordinates for the new level
                 new_x, new_y, new_has_coord = get_spawn_coordinates(char, old_level, level_name)
-                # 7c) Update CurrentLevel (skip coords for dungeons unless CraftTown)
-                if not is_dungeon or level_name == "CraftTown":
-                    char["CurrentLevel"] = {"name": level_name, "x": new_x, "y": new_y}
-                save_characters(session.user_id, session.char_list)
 
                 # 8) Write back into session.char_list and save
                 for i, c in enumerate(session.char_list):
@@ -588,10 +590,7 @@ def handle_client(session: ClientSession):
                 # 9) Update session.current_level
                 session.current_level = level_name
                 session.world_loaded = False
-                # 10) For testing purposes only; uncomment to broadcast level change, remove after testing
-                #broadcast_level_change(session, char["name"], level_name)
                 # 11) Issue the new transfer token
-
                 # Keep the same transfer token (persistent per session)
                 new_token = session.ensure_token(
                     char,
@@ -599,7 +598,6 @@ def handle_client(session: ClientSession):
                     previous_level=old_level
                 )
                 pending_world[new_token] = (char, level_name, old_level)
-
                 # 12) Build and send the ENTER_WORLD packet, including info about the level we just left
                 #    old_level     := the name of the level we departed
                 #    prev_rec      := char["PreviousLevel"] ⟶ {name, x, y}
