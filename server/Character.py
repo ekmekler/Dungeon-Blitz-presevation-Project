@@ -197,7 +197,5 @@ def build_login_character_list_bitpacked(characters):
         buf.write_method_13(char["name"])
         buf.write_method_13(char["class"])
         buf.write_method_6(char["level"], 6)
-
-    import struct
     header = struct.pack(">HH", 0x15, len(buf.to_bytes()))
     return header + buf.to_bytes()

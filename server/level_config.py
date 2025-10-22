@@ -1,3 +1,29 @@
+
+# --- Adjust target_level based on the two special mission doors ---
+def resolve_special_mission_doors(char: dict, current_level: str, target_level: str) -> str:
+    """
+    For the two special mission doors, return the proper level depending
+    on mission completion.
+    """
+    missions = char.get("Missions", {})
+
+    # Case 1: SwampRoadNorth -> SwampRoadConnectionMission (Mission 23)
+    if current_level == "SwampRoadNorth" and target_level == "SwampRoadConnectionMission":
+        state = missions.get("23", {}).get("state", 0)
+        if state == 2:
+            return "SwampRoadConnection"
+
+    # Case 2: BridgeTown -> AC_Mission1 (Mission 92)
+    if current_level == "BridgeTown" and target_level == "AC_Mission1":
+        state = missions.get("92", {}).get("state", 0)
+        if state == 2:
+            return "Castle"
+
+    # default: no change
+    return target_level
+
+
+
 def get_spawn_coordinates(char: dict, current_level: str, target_level: str) -> tuple[float, float, bool]:
 
     # detect dungeon flag

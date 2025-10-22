@@ -1284,8 +1284,8 @@ def handle_request_door_state(session, data, conn):
     Handle packet 0x41: client requests the state of a door.
     Server replies with 0x42 (door state + target).
     """
-    import missions  # make sure mission defs are loaded
-    missions.load_mission_defs()
+
+    missions.load_mission_defs()# make sure mission defs are loaded
 
     if len(data) < 4:
         return
@@ -1350,15 +1350,15 @@ def handle_request_door_state(session, data, conn):
     if door_state == door.DOORSTATE_MISSIONREPEAT and star_rating is not None:
         bb.write_method_6(star_rating, class_119.const_228)
 
-    print(f"[DEBUG] Door request: level={session.current_level}, id={door_id}, "
-          f"info={door_info}, state={door_state}, target='{door_target}'")
+    #print(f"[DEBUG] Door request: level={session.current_level}, id={door_id}, "
+          #f"info={door_info}, state={door_state}, target='{door_target}'")
 
     payload = bb.to_bytes()
     response = struct.pack(">HH", 0x42, len(payload)) + payload
 
     try:
         conn.sendall(response)
-        print(f"[{session.addr}] [0x41] Door {door_id} → state={door_state}, target='{door_target}'")
+        #print(f"[{session.addr}] [0x41] Door {door_id} → state={door_state}, target='{door_target}'")
     except Exception as e:
         print(f"[{session.addr}] [0x41] Failed to send door state: {e}")
 
