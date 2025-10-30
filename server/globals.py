@@ -10,7 +10,7 @@ level_registry = {}
 char_tokens = {}
 token_char   = {}
 extended_sent_map = {}  # user_id -> bool
-level_npcs = {}  # { "LevelName": {eid: npc_dict, ...}, ... }
+level_npcs = {}
 
 SECRET_HEX = "815bfb010cd7b1b4e6aa90abc7679028"
 SECRET      = bytes.fromhex(SECRET_HEX)

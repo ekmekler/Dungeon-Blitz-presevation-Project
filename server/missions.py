@@ -2,9 +2,7 @@ import json
 from typing import Optional, Dict
 """
  if a missions has "Achievement": "True", it means that this missions is a special mission 
-
 """
-# cache
 _MISSION_DEFS_BY_ID: Optional[Dict[int, dict]] = None
 _MISSION_EXTRA_BY_ID: Optional[Dict[int, dict]] = None
 _MISSION_MAX_ID: int = 0
@@ -67,11 +65,9 @@ def load_mission_defs(path: str = "data/MissionTypes.json") -> None:
 
         if mid > max_id:
             max_id = mid
-
     _MISSION_DEFS_BY_ID = defs
     _MISSION_EXTRA_BY_ID = extra
     _MISSION_MAX_ID = max_id
-
 
 def get_mission_extra(mid: int) -> dict:
     if _MISSION_EXTRA_BY_ID is None:

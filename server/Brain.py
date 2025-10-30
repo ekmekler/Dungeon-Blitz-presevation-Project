@@ -9,12 +9,11 @@ LEASH_DISTANCE = 600        # simple leash
 NPC_SPEED = 180.0           # units/sec horizontal chase speed
 TICK_MS = 1               # brain tick interval
 
-# Minimal constants (use your real values if available)
 class _EntityConsts:
-    const_316 = 6  # bits for ent_state; replace with Entity.const_316 if you have it
+    const_316 = 6
 
 ENTITY_STATE_IDLE = 1
-ENTITY_STATE_MOVING = 0     # use whatever your client expects for "moving" state
+ENTITY_STATE_MOVING = 0
 
 # ──────────────────────────────────────────────────────────────
 # Shared server-side brain memory per NPC
@@ -31,7 +30,6 @@ class _NPCBrainState:
         self.last_x = x
         self.last_y = y
 
-# level_name -> npc_id -> _NPCBrainState
 _BRAINS: Dict[str, Dict[int, _NPCBrainState]] = {}
 
 # ──────────────────────────────────────────────────────────────
@@ -56,12 +54,10 @@ def _get_brain(level: str, npc_id: int, spawn_x: int, spawn_y: int) -> _NPCBrain
         m[npc_id] = b
     return b
 
-# Ensure we can write signed 24-bit deltas (mirror your read_method_24)
+
 def _write_method_24(bb, val: int):
-    # clamp to signed 24-bit
     if val < -0x800000: val = -0x800000
     if val >  0x7FFFFF: val =  0x7FFFFF
-    # convert to unsigned 24-bit two's complement
     if val < 0:
         val = (1 << 24) + val
     bb.write_method_6(val, 24)
@@ -74,16 +70,10 @@ def _build_pkt_0x07(entity_id: int,
                     velocity_y: int = 0) -> bytes:
 
     bb = BitBuffer()
-
-    # 1) caster/entity id (method_4)
     bb.write_method_4(entity_id)
-
-    # 2) deltas (method_24 equivalents)
     _write_method_24(bb, delta_x)
     _write_method_24(bb, delta_y)
     _write_method_24(bb, delta_vx)
-
-    # 3) state & flags
     bb.write_method_6(ent_state, _EntityConsts.const_316)
     bb.write_method_6(1 if flags.get('b_left') else 0, 1)
     bb.write_method_6(1 if flags.get('b_running') else 0, 1)
@@ -106,7 +96,7 @@ def _build_pkt_0x07(entity_id: int,
 def tick_npc_brains(all_sessions: List, dt_ms: Optional[int] = None):
     """
     Drive server-side NPC brains. Call this on a timer (e.g., every 50-100ms)
-    from your main loop *after* you’ve processed incoming packets for the tick.
+    from the main loop *after* processed incoming packets for the tick.
 
     all_sessions: your existing list of sessions.
     Each session is expected to have:
@@ -133,36 +123,26 @@ def tick_npc_brains(all_sessions: List, dt_ms: Optional[int] = None):
         players_by_level.setdefault(s.current_level, {})[s.clientEntID] = (px, py)
 
     # For each level, walk through NPCs (we’ll scan the first session that has them)
-    # If you maintain a central registry for NPCs per level, use that instead.
     for s in all_sessions:
         if not s.world_loaded or not s.current_level:
             continue
         level = s.current_level
-
-        # We only want to process each NPC once per level per tick.
-        # So only proceed for the first session we encounter for a given level.
-        # Mark processed levels to avoid duplicates.
         if getattr(s, "_brains_done_level", None) == level:
             continue
         setattr(s, "_brains_done_level", level)
-
-        # Build a merged view of NPCs in this level:
-        # pick one session that has spawned npcs recorded (you stored during spawn)
         npc_list = []
         for sess in all_sessions:
             if sess.world_loaded and sess.current_level == level:
                 for eid, e in sess.entities.items():
                     if not e or e.get('is_player'):
                         continue
-                    # consider it an NPC if it has a name and spawn coords exist
                     if 'name' in e:
                         npc_list.append((eid, e))
-                break  # one session’s map is enough
+                break
 
         if not npc_list:
             continue
 
-        # For broadcasting in this level
         def _broadcast(pkt_bytes: bytes):
             for sess in all_sessions:
                 if sess.world_loaded and sess.current_level == level:
@@ -174,24 +154,19 @@ def tick_npc_brains(all_sessions: List, dt_ms: Optional[int] = None):
         pl_map = players_by_level.get(level, {})
 
         for npc_id, npc in npc_list:
-            # positions
             x = npc.get('pos_x', npc.get('x', 0))
             y = npc.get('pos_y', npc.get('y', 0))
             vx = npc.get('velocity_x', 0)
-
             brain = _get_brain(level, npc_id,
                                int(npc.get('spawn_x', x)),
                                int(npc.get('spawn_y', y)))
 
-            # throttle ticks
             if now - brain.last_tick_ms < TICK_MS:
                 continue
             dt = (now - brain.last_tick_ms) / 1000.0 if brain.last_tick_ms else (TICK_MS / 1000.0)
             brain.last_tick_ms = now
 
-            # pick/validate target
             if brain.target_id is None:
-                # find nearest player in aggro radius
                 best, best_d2 = None, None
                 for pid, (px, py) in pl_map.items():
                     d2 = _dist2(x, y, px, py)
@@ -201,21 +176,17 @@ def tick_npc_brains(all_sessions: List, dt_ms: Optional[int] = None):
                     brain.target_id = best
                     brain.state = "CHASE"
             else:
-                # lost target if player vanished or too far
                 ppos = pl_map.get(brain.target_id)
                 if ppos is None:
                     brain.target_id = None
                     brain.state = "RETURN"
 
-            # decide state transitions/leash
             if brain.state == "CHASE" and brain.target_id is not None:
                 px, py = pl_map.get(brain.target_id, (x, y))
                 if _dist2(x, y, brain.home_x, brain.home_y) > LEASH_DISTANCE * LEASH_DISTANCE:
-                    # leash
                     brain.target_id = None
                     brain.state = "RETURN"
 
-            # compute target position for this tick
             target_x = x
             if brain.state == "CHASE" and brain.target_id is not None:
                 px, py = pl_map.get(brain.target_id, (x, y))
@@ -229,24 +200,21 @@ def tick_npc_brains(all_sessions: List, dt_ms: Optional[int] = None):
                     dir_x = _sign(brain.home_x - x)
                     target_x = x + dir_x * NPC_SPEED * dt
 
-            # snap to int positions for your bitstream (method_45 you used earlier)
             new_x = int(round(target_x))
-            new_y = int(round(y))  # no vertical AI in this minimal brain
+            new_y = int(round(y))
 
-            # compute deltas relative to last known (not spawn)
             old_x = int(npc.get('pos_x', new_x))
             old_y = int(npc.get('pos_y', new_y))
             dx = new_x - old_x
             dy = new_y - old_y
-            dvx = int((dx / max(dt, 1e-3)))  # crude; client doesn’t rely heavily on this
+            dvx = int((dx / max(dt, 1e-3)))
 
-            # update server memory
             npc['pos_x'] = new_x
             npc['pos_y'] = new_y
             npc['velocity_x'] = dvx
             npc['ent_state'] = ENTITY_STATE_MOVING if (dx or dy) else ENTITY_STATE_IDLE
             npc['b_left'] = (dx < 0)
-            npc['b_running'] = bool(dx)  # simple
+            npc['b_running'] = bool(dx)
             npc['b_jumping'] = False
             npc['b_dropping'] = False
             npc['b_backpedal'] = False

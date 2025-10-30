@@ -28,7 +28,6 @@ def _atomic_write(path: str, data) -> None:
         tf.flush()
         os.fsync(tf.fileno())
 
-    # Atomically replace the target
     os.replace(tf.name, path)
 
 def load_accounts() -> dict[str, str]:
@@ -41,7 +40,6 @@ def load_accounts() -> dict[str, str]:
             entries = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
-    # entries is a list of {"email":..., "user_id":...}
     return { e["email"]: e["user_id"] for e in entries }
 
 def save_accounts_index(index: dict[str, str]) -> None:
@@ -95,9 +93,6 @@ def is_character_name_taken(name: str) -> bool:
     return False
 
 def build_popup_packet(message: str, disconnect: bool = False) -> bytes:
-    """
-    Build a 0x1B packet with a message and disconnect flag.
-    """
     buf = BitBuffer(debug=True)
     buf.write_method_13(message)
     buf.write_method_6(1 if disconnect else 0, 1)

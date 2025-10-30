@@ -1,4 +1,3 @@
-# BitBuffer.py
 import struct
 class BitBuffer:
     def __init__(self, debug=True):
@@ -6,14 +5,7 @@ class BitBuffer:
         self.debug = debug
         self.debug_log = [] if debug else None
 
-    def align_to_byte(self):# the client does not use padding it expects everything in a single bitstream but who knows we might need it
-        while len(self.bits) % 8 != 0:
-            self.bits.append(0)
-            if self.debug:
-                self.debug_log.append("align_pad=0")
-
     def write_method_15(self, flag: bool):
-        """Write a single boolean (1 bit) to the bitstream, matching client method_15."""
         self.write_method_11(1 if flag else 0, 1)
         if self.debug:
             self.debug_log.append(f"method_15={flag}")
@@ -49,7 +41,6 @@ class BitBuffer:
             if self.debug:
                 self.debug_log.append(f"write_method_20: value={value}, bits_written={bits_to_write}")
 
-
     def write_method_739(self, value: int):
         if value < 0:
             self.write_method_11(1, 1)
@@ -71,10 +62,6 @@ class BitBuffer:
             self.debug_log.append(f"method_4={val}, prefix={prefix}, bits={bits_to_use}")
 
     def write_method_26(self, val: str):
-        """
-        Write a UTF-8 encoded string with a 16-bit length prefix, capped at 65535.
-        - val: String to write (None or empty string treated as empty).
-        """
         if val is None:
             val = ""
         encoded = val.encode('utf-8')
@@ -98,7 +85,6 @@ class BitBuffer:
         self.write_method_11(val, bits_to_use)
         if self.debug:
             self.debug_log.append(f"method_91={val}, n={n}, bits={bits_to_use}")
-
 
     def write_method_9(self, val: int):
         bitlen = val.bit_length()
@@ -128,12 +114,11 @@ class BitBuffer:
         self.write_method_11(val & 0xFF, 8)
 
     def write_method_13(self, *vals: str):
-        # Join multiple parts into one string
         val = " ".join(str(v) for v in vals)
         encoded = val.encode('utf-8')
         length = min(len(encoded), 65535)
 
-        self.write_method_11(length, 16)  # write length as 16-bit
+        self.write_method_11(length, 16)
         for byte in encoded[:length]:
             self.write_method_11(byte, 8)
 
@@ -149,7 +134,6 @@ class BitBuffer:
         self.write_float(val)
         if self.debug:
             self.debug_log.append(f"method_309={val}")
-
 
     def write_method_24(self, val: int):
         """

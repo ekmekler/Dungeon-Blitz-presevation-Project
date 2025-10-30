@@ -23,7 +23,7 @@ def set_active_session_resolver(fn):
 class TaskScheduler:
     def __init__(self):
         self._lock = threading.Lock()
-        self._queue = []  # heap of (run_at, id, callback)
+        self._queue = []
         self._next_id = 0
         self._new_event = threading.Event()
         threading.Thread(target=self._run_loop, daemon=True).start()
@@ -57,7 +57,6 @@ class TaskScheduler:
                 except Exception as e:
                     print(f"[Scheduler] callback error: {e}")
 
-# singleton instance
 scheduler = TaskScheduler()
 
 def reschedule_for_session(session):
@@ -76,21 +75,18 @@ def reschedule_for_session(session):
                 save_characters(session.user_id, session.char_list)
                 print(f"[{session.addr}] Offline research marked done …")
 
-                # Send the "research complete" packet immediately
                 bb = BitBuffer()
                 bb.write_method_6(research["abilityID"], 7)
                 payload = bb.to_bytes()
                 session.conn.sendall(struct.pack(">HH", 0xC0, len(payload)) + payload)
                 print(f"[{session.addr}] Sent research-complete on login abilityID={research['abilityID']}")
         else:
-            # Schedule callback for when it's due
             scheduler.schedule(
                 run_at=ready_ts,
                 callback=lambda uid=session.user_id, cname=char["name"]: _on_research_done_for(uid, cname)
             )
 
 def _on_research_done_for(user_id: str, char_name: str):
-    # Load persistent data
     chars = load_characters(user_id)
     char = next((c for c in chars if c.get("name") == char_name), None)
     if not char or "SkillResearch" not in char:
@@ -101,7 +97,6 @@ def _on_research_done_for(user_id: str, char_name: str):
     research["done"] = True
     save_characters(user_id, chars)
 
-    # Update in‐memory and notify active session
     if active_session_resolver:
         session = active_session_resolver(user_id, char_name)
         if session and session.authenticated:
@@ -124,7 +119,6 @@ def schedule_research(user_id: str, char_name: str, ready_ts: int):
     )
     return handle
 
-
 def _on_building_done_for(user_id: str, char_name: str):
     chars = load_characters(user_id)
     char = next((c for c in chars if c.get("name") == char_name), None)
@@ -136,7 +130,6 @@ def _on_building_done_for(user_id: str, char_name: str):
         return
 
     now = int(time.time())
-    # Skip if canceled or not ready
     if bu.get("buildingID", 0) == 0:
         return
     if bu.get("done") or bu.get("ReadyTime", 0) > now:
@@ -151,7 +144,6 @@ def _on_building_done_for(user_id: str, char_name: str):
     if building_id and new_rank:
         stats_dict[str(building_id)] = new_rank
 
-    # Clear state after completion
     char["buildingUpgrade"] = {
         "buildingID": 0,
         "rank": 0,
@@ -174,25 +166,22 @@ def _on_building_done_for(user_id: str, char_name: str):
             mem_stats[str(building_id)] = new_rank
         mem_char["buildingUpgrade"] = char["buildingUpgrade"].copy()
 
-    # Notify client (0xD8)
     try:
         bb = BitBuffer()
         bb.write_method_6(building_id, 5)
         bb.write_method_6(new_rank, 5)
-        bb.write_method_15(True)  # status = complete
+        bb.write_method_15(True)
         payload = bb.to_bytes()
         session.conn.sendall(struct.pack(">HH", 0xD8, len(payload)) + payload)
         print(f"[{session.addr}] Sent building-complete (0xD8) ID={building_id}, rank={new_rank}")
     except Exception as e:
         print(f"[Scheduler] building notify failed: {e}")
 
-
 def schedule_building_upgrade(user_id: str, char_name: str, ready_ts: int):
     handle = scheduler.schedule(
         run_at=ready_ts,
         callback=lambda uid=user_id, cn=char_name: _on_building_done_for(uid, cn)
     )
-
     # Store the scheduler ID so it can be canceled later
     chars = load_characters(user_id)
     char = next((c for c in chars if c.get("name") == char_name), None)
@@ -201,9 +190,6 @@ def schedule_building_upgrade(user_id: str, char_name: str, ready_ts: int):
         bu["schedule_id"] = handle
         save_characters(user_id, chars)
 
-
-
-
 def _on_forge_done_for(user_id: str, char_name: str, primary: int, secondary: int):
     # 1) Load persistent data
     chars = load_characters(user_id)
@@ -211,15 +197,12 @@ def _on_forge_done_for(user_id: str, char_name: str, primary: int, secondary: in
     if not char or "magicForge" not in char:
         return
     mf = char["magicForge"]
-
-    # 2) Mark the forge session as completed
     mf["hasSession"] = False
-    mf["status"]     = class_111.const_264   # your “completed” constant
+    mf["status"]     = class_111.const_264
     mf["duration"]   = 0
 
     save_characters(user_id, chars)
 
-    # 3) If user is online, mirror and notify
     if active_session_resolver:
         session = active_session_resolver(user_id, char_name)
         if session and session.authenticated:
@@ -234,7 +217,6 @@ def _on_forge_done_for(user_id: str, char_name: str, primary: int, secondary: in
                     "var_8":     1 if secondary else 0
                 })
 
-            # Build & send “forge complete” packet (0xCD or your chosen opcode)
             try:
                 bb = BitBuffer()
                 bb.write_method_6(primary,   class_1.const_254)
@@ -265,11 +247,9 @@ def _on_talent_done_for(user_id: str, char_name: str):
     if tr.get("done") or tr.get("ReadyTime", 0) > now:
         return
 
-    # 1) Mark research as done (but don’t award point yet)
     tr["done"] = True
     save_characters(user_id, chars)
 
-    # 2) Update in-memory session if online
     if not active_session_resolver:
         return
     session = active_session_resolver(user_id, char_name)
@@ -280,10 +260,9 @@ def _on_talent_done_for(user_id: str, char_name: str):
     if mem_char:
         mem_char["talentResearch"] = tr.copy()
 
-    # 3) Notify client with 0xD5 “research complete”
     try:
         bb = BitBuffer()
-        bb.write_method_6(tr.get("classIndex"), 2)  # classIndex
+        bb.write_method_6(tr.get("classIndex"), 2)
         bb.write_method_6(1, 1)                     # status = complete
         payload = bb.to_bytes()
         session.conn.sendall(struct.pack(">HH", 0xD5, len(payload)) + payload)
@@ -311,7 +290,6 @@ def boot_scan_all_saves():
         dirty = False
 
         for char in chars:
-            # — Research (singular dict) —
             research = char.get("SkillResearch")
             if research and not research.get("done", False):
                 rt = research.get("ReadyTime", 0)
@@ -321,7 +299,6 @@ def boot_scan_all_saves():
                 else:
                     schedule_research(char.get("user_id"), char["name"], rt)
 
-            # — Building upgrades (allow dict or list) —
             bu = char.get("buildingUpgrade")
             entries = []
             if isinstance(bu, dict):
@@ -338,9 +315,7 @@ def boot_scan_all_saves():
                     else:
                         schedule_building_upgrade(char.get("user_id"), char["name"], rt)
 
-            # — Magic Forge sessions —
             mf = char.get("magicForge")
-            # We only care if there’s an active session in‑progress
             if isinstance(mf, dict) and mf.get("hasSession") and mf.get("status") == class_111.const_286:
                 start_ts = mf.get("_start_time", 0)
                 duration_ms = mf.get("duration", 0)
@@ -352,7 +327,6 @@ def boot_scan_all_saves():
                     mf["duration"]   = 0
                     dirty = True
                 else:
-                    # not yet ready: schedule callback
                     schedule_forge(
                         char.get("user_id"),
                         char["name"],
@@ -376,13 +350,11 @@ def boot_scan_all_saves():
                         rt
                     )
 
-
         if dirty:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             print(f"Boot‑scan: patched expired timers in {os.path.basename(path)}")
 
-# Call once at import / server startup
 boot_scan_all_saves()
 
 

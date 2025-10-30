@@ -6,8 +6,8 @@ import pprint
 import random
 import secrets
 import time
-
 import missions
+
 from Character import save_characters, build_paperdoll_packet, load_characters, get_inventory_gears, \
     build_level_gears_packet, build_login_character_list_bitpacked, load_class_template
 from WorldEnter import build_enter_world_packet, Player_Data_Packet
@@ -22,7 +22,7 @@ from constants import get_dye_color
 from entity import Send_Entity_Data, load_npc_data_for_level
 from globals import level_npcs, pending_world, used_tokens, session_by_token, extended_sent_map, current_characters, \
     _level_add, SECRET
-from level_config import SPAWN_POINTS, DOOR_MAP, LEVEL_CONFIG, get_spawn_coordinates, resolve_special_mission_doors
+from level_config import DOOR_MAP, LEVEL_CONFIG, get_spawn_coordinates, resolve_special_mission_doors
 from scheduler import scheduler, _on_research_done_for, schedule_building_upgrade, _on_building_done_for, \
     schedule_forge, _on_talent_done_for, schedule_Talent_point_research
 from missions import _MISSION_DEFS_BY_ID
@@ -68,8 +68,8 @@ def send_npc_dialog(session, npc_id, text):
 # this is required for every time MamothIdols Are used to make a purchase to update the current amount of Idols in the client
 def send_premium_purchase(session, item_name: str, cost: int):
     bb = BitBuffer()
-    bb.write_method_13(item_name)  # matches param1.method_13() in client
-    bb.write_method_4(cost)        # matches param1.method_4() in client
+    bb.write_method_13(item_name)
+    bb.write_method_4(cost)
     body = bb.to_bytes()
     packet = struct.pack(">HH", 0xB5, len(body)) + body
     session.conn.sendall(packet)
@@ -81,7 +81,6 @@ def _send_error(conn, msg):
     conn.sendall(struct.pack(">HH", 0x44, len(payload)) + payload)
 
 #############################################
-
 
 def handle_login_version(session, data, conn):
     """
@@ -95,30 +94,16 @@ def handle_login_version(session, data, conn):
     except Exception as e:
         print(f"[{session.addr}] [0x11] Failed to parse login version: {e}, raw={data.hex()}")
         return
-
-    # (Optional) version check
     if client_version != 100:
         print(f"[{session.addr}] ⚠️ Unsupported client version: {client_version}")
-
-    # 1) Generate random 16-bit session id
     sid = secrets.randbelow(1 << 16)
     sid_bytes = sid.to_bytes(2, "big")
-
-    # 2) Compute MD5(sid || SECRET)
     digest = hashlib.md5(sid_bytes + SECRET).hexdigest()[:12]
-
-    # 3) Build hex challenge string: "sid_hex + digest"
     sid_hex = f"{sid:04x}"
     challenge_str = sid_hex + digest  # 16 hex characters
-
-    # 4) UTF-8 encode with 2-byte length prefix
     utf_bytes = challenge_str.encode("utf-8")
     payload = struct.pack(">H", len(utf_bytes)) + utf_bytes
-
-    # 5) Prepend packet header (0x12)
     response = struct.pack(">HH", 0x12, len(payload)) + payload
-
-    # 6) Send to client
     conn.sendall(response)
     print(f"[{session.addr}] → Sent 0x12 login challenge sid={sid_hex} hash={digest}")
 
@@ -140,17 +125,11 @@ def handle_login_create(session, data, conn):
         print(f"[{session.addr}] [0x13] Failed to parse login-create: {e}, raw={data.hex()}")
         return
 
-    # Account lookup or creation
     session.user_id = get_or_create_user_id(email)
     session.authenticated = True
-
-    # Load this user's character list
     session.char_list = load_characters(session.user_id)
-
-    # Build and send 0x15 character list packet
     packet = build_login_character_list_bitpacked(session.char_list)
     conn.sendall(packet)
-
     print(f"[{session.addr}] [0x13] Login/Create OK for {email} → {len(session.char_list)} characters")
 
 def handle_login_authenticate(session, data, conn):
@@ -164,33 +143,25 @@ def handle_login_authenticate(session, data, conn):
     except Exception as e:
         print(f"[{session.addr}] [0x14] Error parsing packet: {e}, raw={data.hex()}")
         return
-
     accounts = load_accounts()
     user_id = accounts.get(email)
     if not user_id:
         conn.sendall(build_popup_packet("Account not found", disconnect=True))
         print(f"[{session.addr}] [0x14] Login failed — account not found for {email}")
         return
-
     session.user_id = user_id
     save_path = os.path.join(_SAVES_DIR, f"{user_id}.json")
-
     try:
         with open(save_path, "r", encoding="utf-8") as f:
             session.player_data = json.load(f)
     except FileNotFoundError:
         print(f"[{session.addr}] [0x14] Missing save for user {user_id}, creating blank save.")
         session.player_data = {"email": email, "characters": []}
-
     session.char_list = session.player_data.get("characters", [])
     session.authenticated = True
-
-    # Send character list
     packet = build_login_character_list_bitpacked(session.char_list)
     conn.sendall(packet)
-
     print(f"[{session.addr}] [0x14] Login success for {email} → user_id={user_id}, {len(session.char_list)} chars")
-
 
 def handle_login_character_create(session, data, conn):
     """
@@ -215,7 +186,6 @@ def handle_login_character_create(session, data, conn):
         print(f"[{session.addr}] [0x17] Failed to parse create-char: {e}, raw={data.hex()}")
         return
 
-    # Check for taken names
     if is_character_name_taken(name):
         err_packet = build_popup_packet(
             "Character name is unavailable. Please choose a new name.",
@@ -224,10 +194,7 @@ def handle_login_character_create(session, data, conn):
         conn.sendall(err_packet)
         print(f"[{session.addr}] [0x17] Name taken: {name}")
         return
-
     print(f"[{session.addr}] [0x17] Creating character '{name}' ({class_name}, {gender})")
-
-    # Load base class template and apply cosmetic choices
     base_template = load_class_template(class_name)
     new_char = copy.deepcopy(base_template)
     new_char.update({
@@ -275,7 +242,6 @@ def handle_character_select(session, data, conn):
     except Exception as e:
         print(f"[{session.addr}] [0x16] Error reading character name: {e}, raw={data.hex()}")
         return
-
     for c in session.char_list:
         if c["name"] == name:
             session.current_character = name
@@ -3479,9 +3445,6 @@ def handle_power_cast(session, data, all_sessions):
                 print(line)
 
 def handle_linkupdater(session, data, all_sessions):
-    # Only handle 0xA2 internally
-
-
     payload = data[4:]
     br = BitReader(payload, debug=False)
     try:
@@ -3520,8 +3483,6 @@ def build_entity_dict(eid, char, props):
         "v": int(props.get("velocity_x", 0)),
         "team": int(props.get("team", 1)),
     }
-
-    # Add appearance only if player with char info
     if char:
         ent_dict.update({
             "class": char.get("class", ""),
@@ -3681,8 +3642,6 @@ def handle_entity_full_update(session, data, all_sessions):
                 print(log_line)
 
 def handle_entity_incremental_update(session, data, all_sessions):
-    # Only handle 0x07
-
     payload = data[4:]
     br = BitReader(payload, debug=True)
 
@@ -3727,11 +3686,6 @@ def handle_entity_incremental_update(session, data, all_sessions):
         lvl_cfg = LEVEL_CONFIG.get(current_level, (None,) * 4)
         is_dungeon = lvl_cfg[3]
 
-        if old_x is None or old_y is None:
-            # no full-update seen yet, fall back to file or default
-            spawn = SPAWN_POINTS.get(session.current_level, {'x': 0, 'y': 0})
-            old_x, old_y = spawn['x'], spawn['y']
-            # you could still inspect char-list here if you really want extra fallback
         # ────────────────────────────────────────────────────────────
 
         # 5) Compute new absolute position
@@ -3758,12 +3712,9 @@ def handle_entity_incremental_update(session, data, all_sessions):
                     break
 
         #print(f"[{session.addr}] [PKT07] | Entity_ID:{entity_id} | Moved to =({new_x},{new_y}), state={ent_state}")
-
-        # 8) Broadcast raw packet to peers
         for other in all_sessions:
             if other is not session and other.world_loaded and other.current_level == session.current_level:
                 other.conn.sendall(data)
-
     except Exception as e:
         print(f"[{session.addr}] [PKT07] Error parsing packet: {e}")
         for line in br.get_debug_log():

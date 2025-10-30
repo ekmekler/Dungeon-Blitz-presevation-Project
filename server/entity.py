@@ -2,13 +2,9 @@ import json
 import os
 
 from BitBuffer import BitBuffer
-from constants import Entity, class_7, class_20, class_3, Game, class_118, \
-    LinkUpdater, EntType, GearType, class_64, class_21, method_277, GAME_CONST_209, NUM_TALENT_SLOTS, \
-    CLASS_118_CONST_127, SLOT_BIT_WIDTHS
+from constants import Entity, class_7, class_20, class_3, Game, LinkUpdater, EntType, GearType, class_64, class_21
 from typing import Dict, Any
-
 npc_cache = {}
-
 """
 Hints NPCs data 
 [
@@ -47,9 +43,7 @@ For example the NPC with the "Linked_Mission": "NR_Mayor01",  will be linked to 
 
 - this will also show the NPCs name under his feet "NR_Mayor01" is "Mayor Ristas"
 
-
 ===============
-
 
 Team Types : 
 
@@ -61,7 +55,6 @@ Team Types :
       
  NEUTRAL:uint = 3; # Friendly NPC
  
- 
 entState : 
  
  0 = Active State
@@ -71,8 +64,6 @@ entState :
  2 = Drama State (used during cutscenes most likely) this will put the entity to sleep also make them untargetable 
  
  3 = Entity Dies when the game loads 
- 
- 
  
  =============== how to use "DramaAnim" and "SleepAnim" ===============
  
@@ -99,17 +90,9 @@ entState :
       "SleepAnim": "",
       "entState": 1,
     }
-
 """
 
 def load_npc_data_for_level(level_name: str) -> list:
-    """
-    Args:
-        level_name (str): The level identifier (e.g., 'TutorialBoat').
-
-    Returns:
-        list: List of dictionaries, each containing NPC data for the given level.
-    """
     json_path = os.path.join("NPC_Data", f"{level_name}.json")
     try:
         with open(json_path, 'r') as file:
@@ -120,16 +103,10 @@ def load_npc_data_for_level(level_name: str) -> list:
 
 def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
     bb = BitBuffer(debug=True)
-
-    # 1) Entity ID
     bb.write_method_4(entity['id'])
-
-    # 2) Name
     bb.write_method_13(entity['name'])
-
-    # 3) Player Appearance block
     if entity.get("is_player", False):
-        bb.write_method_6(1, 1)  # send visuals block
+        bb.write_method_6(1, 1)
         bb.write_method_13(entity.get("class", ""))
         bb.write_method_13(entity.get("gender", ""))
         bb.write_method_13(entity.get("headSet", ""))
@@ -157,29 +134,24 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
                 bb.write_method_6(colors[1], class_21.const_50)
             else:
                 bb.write_method_6(0, 1)
-
     else:
-        bb.write_method_6(0, 1)  # skip entire visuals section
+        bb.write_method_6(0, 1)
 
-    # 4) Position + Velocity
     bb.write_signed_method_45(int(entity['x']))  # x
     bb.write_signed_method_45(int(entity['y']))  # y
     bb.write_signed_method_45(int(entity['v']))  # Velocity
-    # 4) team
+
     bb.write_method_6(entity.get('team', 0), Entity.TEAM_BITS)
 
     # ── Player OR NPC branch ──
     if entity.get("is_player", False):
-        # 5a) Signal “yes, player data follows”
         bb.write_method_6(1, 1)
 
-        # 5b) Write _loc13_ (timing flag for method_1273)
-        timing_flag = entity.get("set_timing_flag", False)  # True for new spawns or significant updates
+        timing_flag = entity.get("set_timing_flag", False)
         bb.write_method_6(1 if timing_flag else 0, 1)
         if bb.debug:
             bb.debug_log.append(f"timing_flag={timing_flag}")
 
-        # 5c) Write _loc14_ (appearance flag for method_1646)
         appearance_flag = entity.get("show_appearance_effect", False)  # True for new player  spawns if the player is already in the level then it is False
         bb.write_method_6(1 if appearance_flag else 0, 1)
         if bb.debug:
@@ -192,7 +164,6 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
         bb.write_method_6(entity.get("MountID", 0), class_20.const_297)
         bb.write_method_6(entity.get("Emote_ID", 0), class_3.const_69)
         # ====================================
-
         abilities = entity.get("abilities", [])
         has_abilities = len(abilities) > 0
         bb.write_method_6(1 if has_abilities else 0, 1)
@@ -206,13 +177,9 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
                 if bb.debug:
                     bb.debug_log.append(
                         f"ability_{i + 1}_abilityID={ability.get('abilityID', 0)}, rank={ability.get('rank', 0)}")
-
     else:
-        # 5a) NPCs skip the player block
         bb.write_method_6(0, 1)
-
         bb.write_method_6(1 if entity.get("untargetable", False) else 0, 1)
-
         bb.write_method_739(entity.get("render_depth_offset", 0))
 
         # used to set the current entity's moving speed if he has any
@@ -229,7 +196,6 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
         if val:
             bb.write_method_13(val)
 
-    # links this entity to the summoners ID
     summoner_id = entity.get("summonerId", 0)
     if summoner_id:
         bb.write_method_6(1, 1)
@@ -239,28 +205,20 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
     else:
         bb.write_method_6(0, 1)
 
-    # 8) power type
     power_id = entity.get("power_id", 0)
 
     if power_id > 0:
-        bb.write_method_6(1, 1)  # flag: has PowerType
-        bb.write_method_4(power_id)  # the index into class_14.powerTypes
+        bb.write_method_6(1, 1)
+        bb.write_method_4(power_id)
         if bb.debug:
             bb.debug_log.append(f"powerTypeID = {power_id}")
     else:
-        bb.write_method_6(0, 1)  # flag: no PowerType
+        bb.write_method_6(0, 1)
 
-    # 9) entity state
     bb.write_method_6(entity.get("entState", 0), Entity.const_316)
-
-    # 10) facing left
     bb.write_method_6(1 if entity.get("facing_left", False) else 0, 1)
-
-
     if entity.get('is_player', False):
 
-
-        # 5e) Player level and Talent processing loop
         level = entity.get("level", 0)
         bb.write_method_6(level, Entity.MAX_CHAR_LEVEL_BITS)
         if bb.debug:
@@ -273,7 +231,6 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
 
         # we are not sending any Talent Data
         bb.write_method_6( 0, 1)
-
         #TODO...
         # this will crash the game not sure why the game seems to read the bitstream properly
         # after this is fixed the bitstream should be fully in sync with the client
@@ -296,18 +253,13 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
                 else:
                     bb.write_method_6(0, 1)  # empty slot
         """
-
     else:
         bb.write_method_6(0, 1)
 
-
-    # 11) HP delta
     # updates the entity's Health if that specific entity has lost any amount of health
     value = int(round(entity.get("health_delta", 0)))
     bb.write_signed_method_45(value)
 
-
-    # 12) buffs
     # Updates the entities buffs if he has any
     buffs = entity.get("buffs", [])
     bb.write_method_4(len(buffs))
@@ -317,7 +269,6 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
         bb.write_method_4(buff.get("param2", 0))
         bb.write_method_4(buff.get("param3", 0))
         bb.write_method_4(buff.get("param4", 0))
-
         extra = buff.get("extra_data", [])
         bb.write_method_6(1 if extra else 0, 1)
         if extra:
@@ -328,6 +279,4 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
                 bb.write_method_4(len(vals))
                 for v in vals:
                     bb.write_float(v)
-
     return bb.to_bytes()
-

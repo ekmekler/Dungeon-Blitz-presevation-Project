@@ -13,11 +13,6 @@ def load_class_template(class_name: str) -> dict:
         return json.load(f)
 
 def build_level_gears_packet(gears_list: list[tuple[int, int]]) -> bytes:
-    """
-    Build packet 0xF5 with list of (gear_id, tier) tuples.
-    Args:
-        gears_list: List of tuples containing (gear_id, tier).
-    """
     buf = BitBuffer()
     buf.write_method_4(len(gears_list))  # Write number of gears
     for gear_id, tier in gears_list:
@@ -27,16 +22,8 @@ def build_level_gears_packet(gears_list: list[tuple[int, int]]) -> bytes:
     return struct.pack(">HH", 0xF5, len(payload)) + payload
 
 def get_inventory_gears(char: dict) -> list[tuple[int, int]]:
-    """
-    Extract gear_id and tier from character's inventoryGears.
-    Args:
-        char: Character dictionary containing inventoryGears.
-    Returns:
-        List of (gear_id, tier) tuples.
-    """
     inventory_gears = char.get("inventoryGears", [])
     return [(gear.get("gearID", 0), gear.get("tier", 0)) for gear in inventory_gears]
-
 # Hints Do not delete
 """
   "gearSets": [
@@ -82,7 +69,6 @@ def get_inventory_gears(char: dict) -> list[tuple[int, int]]:
   "var_2316": 2,         // extra small stat #2 (16 bits, always read)
   "var_2434": true       // final continuation flag (1 bit; often used to toggle UI)
 }
-  
 """
 # ──────────────── Default full gear definitions ────────────────
 # Each sub-list is [GearID, Rune1, Rune2, Rune3, Color1, Color2]
@@ -123,7 +109,6 @@ def load_characters(user_id: str) -> list[dict]:
         data = json.load(f)
     return data.get("characters", [])
 
-
 def save_characters(user_id: str, char_list: list[dict]):
     """Save the list of characters for a given user_id, preserving other fields."""
     os.makedirs(CHAR_SAVE_DIR, exist_ok=True)
@@ -140,7 +125,6 @@ def save_characters(user_id: str, char_list: list[dict]):
     data["characters"] = char_list
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-
 
 def build_paperdoll_packet(character_dict):
     buf = BitBuffer(debug=True)  # Enable debug for tracing
@@ -176,9 +160,7 @@ def build_paperdoll_packet(character_dict):
         buf.write_method_6(gear_id, 11)  # GearType.GEARTYPE_BITSTOSEND = 11
         if buf.debug:
             buf.debug_log.append(f"gear_slot_{i + 1}_gearID={gear_id}")
-
     return buf.to_bytes()
-
 
 def build_login_character_list_bitpacked(characters):
     """

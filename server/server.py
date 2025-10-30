@@ -17,13 +17,12 @@ from Commands import handle_hotbar_packet, handle_masterclass_packet, handle_gea
     handle_collect_hatched_egg, handle_talk_to_npc, handle_char_regen, allocate_talent_tree_points, \
     handle_respec_talent_tree, handle_building_claim, handle_login_version, handle_login_create, \
     handle_login_authenticate, handle_character_select, handle_gameserver_login, handle_request_level_gears, \
-    handle_level_transfer_request, handle_open_door
+    handle_level_transfer_request, handle_open_door, handle_login_character_create
 from PolicyServer import start_policy_server
 from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, extended_sent_map, HOST, \
     PORTS
 from static_server import start_static_server
 from scheduler import set_active_session_resolver
-
 
 def _level_remove(level, session):
     s = level_registry.get(level)
@@ -120,7 +119,6 @@ class ClientSession:
         if self.user_id in extended_sent_map:
             extended_sent_map[self.user_id]["last_seen"] = time.time()
 
-
 def prune_extended_sent_map(timeout: int = 2):
     """Remove users from extended_sent_map if they haven't reconnected in 'timeout' seconds."""
     now = time.time()
@@ -128,7 +126,6 @@ def prune_extended_sent_map(timeout: int = 2):
         if now - data.get("last_seen", now) > timeout:
             extended_sent_map.pop(uid, None)
             print(f"[DEBUG] Cleared extended_sent_map for user_id={uid} (timeout expired)")
-
 
 def read_exact(conn, n):
     buf = b""
@@ -156,24 +153,15 @@ def handle_client(session: ClientSession):
                 print(f"[{addr}] Connection closed by client")
                 break
             buffer.extend(chunk)
-
-            # Try to extract complete packets
             while len(buffer) >= 4:
-                # Peek header
                 pkt    = int.from_bytes(buffer[0:2], byteorder='big')
                 length = int.from_bytes(buffer[2:4], byteorder='big')
                 total  = 4 + length
-
-                # If we don’t yet have the full packet, wait for more data
                 if len(buffer) < total:
                     break
-
-                # We have a full packet in buffer[0:total]
                 data    = bytes(buffer[:total])
                 payload = data[4:]
-                # Remove it from buffer
                 del buffer[:total]
-
                 # Debug‐print
                #print(f"[{addr}] Framed pkt=0x{pkt:02X} length={length} payload_bytes={len(payload)}")
 
@@ -191,6 +179,8 @@ def handle_client(session: ClientSession):
                 handle_login_create(session, data, conn)
             elif pkt == 0x14:  # Done
                 handle_login_authenticate(session, data, conn)
+            elif pkt == 0x17:
+                handle_login_character_create(session, data, conn)
             elif pkt == 0x16:
                 handle_character_select(session, data, conn)
             elif pkt == 0x1f:# --- 0x1F: Welcome / Player_Data (finalize level transfer and spawn NPCs) ---

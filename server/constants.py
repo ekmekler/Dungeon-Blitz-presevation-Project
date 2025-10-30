@@ -1,13 +1,7 @@
-# constants.py
 import os
 import json
-from typing import Optional, Dict
 
 PACKET_HEADER_SIZE = 4
-
-
-
-
 NUM_TALENT_SLOTS = 27
 CONST_529 = [5,2,3,5,5,3,2,3,2,5,2,3,5,5,3,2,3,2,5,2,3,5,5,3,2,3,2]
 CLASS_118_CONST_127 = 6
@@ -65,14 +59,13 @@ def method_233(frame_bits: int) -> str:
     return FRAMEBITS_TO_CLASSKEY.get(frame_bits, "")
 
 def client_index_to_node_id(i: int) -> int:
-    """Emulates ActionScript method_191"""
+    """Emulates  method_191"""
     if i < 9:
         return i + 1
     elif i < 18:
         return i + 2
     else:
         return i + 3
-
 
 MASTERCLASS_TO_BUILDING = {
     # Rogue
@@ -115,7 +108,6 @@ class Bossfight:
     const_756 = 2
     const_810 = 3
 
-
 class Mission:
     const_213 = 0 # Not started
     const_58  = 1 # In progress
@@ -140,7 +132,6 @@ class class_119:
     const_490 = 810
     const_1418 = 560
 
-
 ENTITYSTATE_DEAD   = 2    # 3
 ENTITYSTATE_ALIVE  = 1  # 1
 
@@ -149,6 +140,7 @@ CLASS_NAME_TO_ID = {
     "Rogue":   1,
     "Mage":    2,
 }
+
 class class_9:
     const_851 = 2
     const_129 = 5
@@ -165,22 +157,22 @@ class door:
     DOORSTATE_MISSIONREPEAT = 3
     DOORSTATE_LOCKED = 4
 
-
 class class_10:
     const_83 = 7
     const_665 = 4
     const_105 = 10
-class class_8:
 
+class class_8:
     const_658 = 7
     const_731 = 7
-class class_7 :
 
+class class_7 :
     const_19 = 7
     const_75 = 6
-class class_20 :
 
+class class_20 :
     const_297 = 7
+
 class class_3 :
     const_69 = 5
     var_1415 = 1  # ForgeXP
@@ -204,7 +196,6 @@ class Entity:
                         30165, 32730, 35540]
     Dye_Idols_Cost = [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4,
                          4, 5, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 16, 17]
-
 
 class PowerType :
     const_423 = 7
@@ -289,7 +280,7 @@ class class_66:
     const_1410 = 2
     const_1420 = 3
     const_185 = 0
-    const_200 = 1 # Entity Alive state
+    const_200 = 1
     const_534 = 2
     const_495 = 50
     const_948 = 5
@@ -327,8 +318,6 @@ NEWS_EVENTS = {
 }
                #Loaders
 ################################################################
-
-# load the JSON file into a dict
 with open("data/DyeTypes.json", "r", encoding="utf-8") as f:
     DYE_DATA = json.load(f)
 
@@ -340,12 +329,10 @@ def get_dye_color(dye_id):
 
 def load_ability_data():
     try:
-        # Get the directory of Constants.py
         base_dir = os.path.dirname(os.path.abspath(__file__))
         json_path = os.path.join(base_dir, "data/AbilityTypes.json")
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            #print(f"Loaded {len(data)} ability entries from {json_path}")
             return data
     except FileNotFoundError:
         print(f"Error: AbilityTypes.json not found at {json_path}")
@@ -353,11 +340,9 @@ def load_ability_data():
     except json.JSONDecodeError as e:
         print(f"Error: Failed to parse AbilityTypes.json: {e}")
         return []
-
 ABILITY_DATA = load_ability_data()
 
 def get_ability_info(ability_id, rank):
-    """Retrieve ability data by abilityID and rank from ABILITY_DATA."""
     for entry in ABILITY_DATA:
         if entry.get("AbilityID") == str(ability_id) and entry.get("Rank") == str(rank):
             return {
@@ -368,9 +353,6 @@ def get_ability_info(ability_id, rank):
                 "UpgradeTime": int(entry.get("UpgradeTime", 0))
             }
     return None
-
-
-
 BUILDING_DATA = []
 
 def load_building_data():
@@ -384,9 +366,3 @@ def find_building_data(building_id: int, rank: int):
         if int(b["BuildingID"]) == building_id and int(b["Rank"]) == rank:
             return b
     return None
-
-
-
-
-
-

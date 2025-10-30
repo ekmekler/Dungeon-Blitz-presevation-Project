@@ -69,7 +69,7 @@ class BitReader:
                 )
         return val
 
-    def read_method_739(self) -> int:  # Add if needed
+    def read_method_739(self) -> int:
         sign = self.read_bit()
         prefix = self.read_method_20(3)
         bits_to_use = (prefix + 1) * 2
@@ -87,30 +87,18 @@ class BitReader:
         return value
 
     def read_method_26(self) -> str:
-        # 1) read 16 bits for the length
-        length = self.read_method_20(16)          # big-endian unsigned by design
-        # 2) read `length` bytes
+        length = self.read_method_20(16)
         raw = bytearray(self.read_method_20(8) for _ in range(length))
-        # 3) decode as UTF-8
         try:
             return raw.decode('utf-8')
         except UnicodeDecodeError:
-            # fallback if you ever have non-utf8 data
             return raw.decode('latin-1', errors='replace')
 
     def read_method_706(self) -> int:
-        # 1) sign flag (1 bit)
         is_negative = bool(self.read_bit())
-
-        # 2) read 3-bit “prefix” that encodes how many bits follow
         prefix = self.read_method_20(3)
-        #    prefix = (bit_length + (bit_length & 1)) / 2 - 1
-        # => bit_length = (prefix + 1) * 2
         bit_length = (prefix + 1) * 2
-
-        # 3) read that many bits of the absolute value
         value = self.read_method_20(bit_length)
-
         return -value if is_negative else value
 
     def read_method_6(self, bit_count: int) -> int:
@@ -133,7 +121,7 @@ class BitReader:
 
     def read_method_45(self) -> int:
         sign = self.read_bit()
-        if self.bit_index + 4 > len(self.data) * 8:  # Need at least 4 bits for prefix
+        if self.bit_index + 4 > len(self.data) * 8:
             raise ValueError("Not enough data to read method_4 prefix for method_45")
         magnitude = self.read_method_4()
         value = -magnitude if sign else magnitude
@@ -180,13 +168,12 @@ class BitReader:
         return value
 
     def read_method_309(self) -> float:
-        return self.read_float()  # Reads 32-bit float
+        return self.read_float()
 
     def read_float(self) -> float:
         bits = self.read_method_20(32)
         bytes_val = struct.pack('>I', bits)
         return struct.unpack('>f', bytes_val)[0]
-
 
     def get_debug_log(self) -> List[str]:
         return self.debug_log
