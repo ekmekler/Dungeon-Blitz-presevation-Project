@@ -87,20 +87,22 @@ def handle_login_version(session, data, conn):
     Handle PKTTYPE_LOGIN_VERSION (0x11) — client sends game version.
     Respond with PKTTYPE_LOGIN_CHALLENGE (0x12) challenge string.
     """
-    payload = data[4:]
     try:
-        br = BitReader(data)
-        client_version = br.read_method_9()  # client sends one integer
+        br = BitReader(data[4:], debug=True)
+        client_version = br.read_method_9()
     except Exception as e:
         print(f"[{session.addr}] [0x11] Failed to parse login version: {e}, raw={data.hex()}")
         return
     if client_version != 100:
         print(f"[{session.addr}] ⚠️ Unsupported client version: {client_version}")
+    else:
+        print(f"[{session.addr}] ✅ Client version OK: {client_version}")
     sid = secrets.randbelow(1 << 16)
     sid_bytes = sid.to_bytes(2, "big")
     digest = hashlib.md5(sid_bytes + SECRET).hexdigest()[:12]
     sid_hex = f"{sid:04x}"
     challenge_str = sid_hex + digest  # 16 hex characters
+    session.challenge_str = challenge_str
     utf_bytes = challenge_str.encode("utf-8")
     payload = struct.pack(">H", len(utf_bytes)) + utf_bytes
     response = struct.pack(">HH", 0x12, len(payload)) + payload
@@ -124,7 +126,6 @@ def handle_login_create(session, data, conn):
     except Exception as e:
         print(f"[{session.addr}] [0x13] Failed to parse login-create: {e}, raw={data.hex()}")
         return
-    # create / lookup account and return character list
     session.user_id = get_or_create_user_id(email)
     session.authenticated = True
     session.char_list = load_characters(session.user_id)
@@ -164,11 +165,6 @@ def handle_login_authenticate(session, data, conn):
     print(f"[{session.addr}] [0x14] Login success for {email} → user_id={user_id}, {len(session.char_list)} chars")
 
 def handle_login_character_create(session, data, conn):
-    """
-    Handle PKTTYPE_LOGIN_CHARACTER_CREATE (0x17)
-    Client sends name, class, appearance & color data.
-    Server creates the new character, saves it, and returns updated info.
-    """
     br = BitReader(data[4:])
     try:
         name = br.read_method_26()
@@ -187,14 +183,12 @@ def handle_login_character_create(session, data, conn):
         return
 
     if is_character_name_taken(name):
-        err_packet = build_popup_packet(
+        conn.sendall(build_popup_packet(
             "Character name is unavailable. Please choose a new name.",
-            disconnect=False
-        )
-        conn.sendall(err_packet)
+            disconnect=False))
         print(f"[{session.addr}] [0x17] Name taken: {name}")
         return
-    print(f"[{session.addr}] [0x17] Creating character '{name}' ({class_name}, {gender})")
+
     base_template = load_class_template(class_name)
     new_char = copy.deepcopy(base_template)
     new_char.update({
@@ -210,25 +204,46 @@ def handle_login_character_create(session, data, conn):
         "shirtColor": shirt_color,
         "pantColor": pant_color,
     })
+    new_char["user_id"] = session.user_id
 
-    # Save to the player's file
     session.char_list.append(new_char)
     save_characters(session.user_id, session.char_list)
 
-    # --- Send updated character list (0x15) ---
-    char_list_packet = build_login_character_list_bitpacked(session.char_list)
-    conn.sendall(char_list_packet)
-    print(f"[{session.addr}] [0x17] Sent 0x15 character list update ({len(session.char_list)} chars)")
+    current_level = new_char["CurrentLevel"]["name"]
+    prev_level = new_char["PreviousLevel"]["name"]
 
-    # --- Send paperdoll preview (0x1A) ---
-    pd = build_paperdoll_packet(new_char)
-    conn.sendall(struct.pack(">HH", 0x1A, len(pd)) + pd)
-    print(f"[{session.addr}] [0x17] Sent 0x1A paperdoll packet, len={len(pd)}")
+    tk = session.ensure_token(new_char, target_level=current_level, previous_level=prev_level)
+    session.clientEntID = tk
+    session_by_token[tk] = session
 
-    # --- Send popup success message (0x1B) ---
-    popup = build_popup_packet("Character Successfully Created", disconnect=False)
-    conn.sendall(popup)
-    print(f"[{session.addr}] [0x17] Sent 0x1B popup message")
+    _level_add(current_level, session)
+
+    level_config = LEVEL_CONFIG.get(current_level, ("LevelsNR.swf/a_Level_NewbieRoad", 1, 1, False))
+    pkt_out = build_enter_world_packet(
+        transfer_token=tk,
+        old_level_id=0,
+        old_swf="",
+        has_old_coord=False,
+        old_x=0,
+        old_y=0,
+        host="127.0.0.1",
+        port=8080,
+        new_level_swf=level_config[0],
+        new_map_lvl=level_config[1],
+        new_base_lvl=level_config[2],
+        new_internal=current_level,
+        new_moment="",
+        new_alter="",
+        new_is_dungeon=level_config[3],
+        new_has_coord=False,
+        new_x=0,
+        new_y=0,
+        char=new_char,
+    )
+
+    conn.sendall(pkt_out)
+    pending_world[tk] = (new_char, current_level, prev_level)
+    print(f"[{session.addr}] [0x17] Character '{name}' created → entering {current_level} (tk={tk})")
 
 def handle_character_select(session, data, conn):
     """
@@ -377,15 +392,9 @@ def handle_gameserver_login(session, data, conn):
     Handle PKTTYPE_GAMESERVER_LOGIN (0x1F)
     Sent by the client after level transfer to finalize connection and spawn entities.
     """
-    if len(data) < 6:
-        # Optional: remove this check if you fully trust client/server sync
-        print(f"[{session.addr}] Warning: 0x1F packet smaller than expected, len={len(data)}")
-
-    token = int.from_bytes(data[4:6], 'big')
-
+    token = int.from_bytes(data[4:], 'big')
     # Resolve entry (used_tokens or pending_world)
     entry = used_tokens.get(token) or pending_world.get(token)
-
     # If entry missing, attempt to resolve by session token (support reconnects)
     if entry is None:
         if len(pending_world) == 1:
@@ -487,6 +496,7 @@ def handle_gameserver_login(session, data, conn):
             print(f"[{session.addr}] Error sending NPC {npc['id']} to {session.current_level}: {e}")
 
     print(f"[{session.addr}] NPCs synced for level {session.current_level}")
+
 
 
 def handle_level_transfer_request(session, data, conn):
@@ -2749,10 +2759,6 @@ def handle_apply_dyes(session, payload, all_sessions):
             char.get("pantColor"),
         )
 
-
-
-
-
 def send_dye_sync_packet(session, entity_id, dyes_by_slot, shirt_color=None, pant_color=None):
         bb = BitBuffer()
         bb.write_method_4(entity_id)
@@ -2792,8 +2798,6 @@ def send_dye_sync_packet(session, entity_id, dyes_by_slot, shirt_color=None, pan
         session.conn.sendall(pkt)
         print(f"[Sync] Sent dye update (0x111) to client for entity {entity_id}")
 
-
-
 def PaperDoll_Request(session, data, conn):
     """
     Handles paperdoll request (0x19). Reads character name,
@@ -2813,7 +2817,6 @@ def PaperDoll_Request(session, data, conn):
         # Character not found, send empty packet
         conn.sendall(struct.pack(">HH", 0x1A, 0))
         #print(f"[{session.addr}] [PKT0x19] Character '{name}' not found. Sent empty paperdoll.")
-
 
 def handle_pet_info_packet(session, data, all_sessions):
     """
