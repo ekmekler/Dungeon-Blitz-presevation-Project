@@ -21,64 +21,13 @@ from BitBuffer import BitBuffer
 from constants import get_dye_color
 from entity import Send_Entity_Data, load_npc_data_for_level
 from globals import level_npcs, pending_world, used_tokens, session_by_token, extended_sent_map, current_characters, \
-    _level_add, SECRET
+    _level_add, SECRET, build_start_skit_packet, send_premium_purchase, send_consumable_update, _send_error
 from level_config import DOOR_MAP, LEVEL_CONFIG, get_spawn_coordinates, resolve_special_mission_doors
 from scheduler import scheduler, _on_research_done_for, schedule_building_upgrade, _on_building_done_for, \
     schedule_forge, _on_talent_done_for, schedule_Talent_point_research
 from missions import _MISSION_DEFS_BY_ID
 
 SAVE_PATH_TEMPLATE = "saves/{user_id}.json"
-
-# Helpers
-#############################################
-
-# updates players consumables inventory when a  consumable is used
-def send_consumable_update(conn, consumable_id: int, new_count: int):
-    bb = BitBuffer()
-    bb.write_method_6(consumable_id, class_3.const_69)
-    bb.write_method_4(new_count)
-    body = bb.to_bytes()
-    packet = struct.pack(">HH", 0x10C, len(body)) + body
-    conn.sendall(packet)
-
-def build_start_skit_packet(entity_id: int, dialogue_id: int = 0, mission_id: int = 0) -> bytes:
-    """
-    Build packet for client to start a skit/dialogue.
-    entity_id: The NPC's entity ID.
-    dialogue_id: Which dialogue to show (0–5).
-    mission_id: Currently unused, but protocol reserves it.
-    dialogue ID should always be 0 for NPCs with no linked missions
-    """
-    bb = BitBuffer()
-    bb.write_method_4(entity_id)        # Entity ID
-    bb.write_method_6(dialogue_id, 3)   # Dialogue ID (3 bits)
-    bb.write_method_4(mission_id)       # Mission ID (reserved / unused for now)
-    payload = bb.to_bytes()
-    return struct.pack(">HH", 0x7B, len(payload)) + payload
-
-def send_npc_dialog(session, npc_id, text):
-    bb = BitBuffer()
-    bb.write_method_4(npc_id)
-    bb.write_method_13(text)
-    payload = bb.to_bytes()
-    packet = struct.pack(">HH", 0x76, len(payload)) + payload
-    session.conn.sendall(packet)
-    print(f"[DEBUG] Sent NPC dialog: {text}")
-
-# this is required for every time MamothIdols Are used to make a purchase to update the current amount of Idols in the client
-def send_premium_purchase(session, item_name: str, cost: int):
-    bb = BitBuffer()
-    bb.write_method_13(item_name)
-    bb.write_method_4(cost)
-    body = bb.to_bytes()
-    packet = struct.pack(">HH", 0xB5, len(body)) + body
-    session.conn.sendall(packet)
-    print(f"[DEBUG] Deducted {cost} Mammoth Idols for {item_name}")
-
-def _send_error(conn, msg):
-    encoded = msg.encode("utf-8")
-    payload = struct.pack(">H", len(encoded)) + encoded
-    conn.sendall(struct.pack(">HH", 0x44, len(payload)) + payload)
 
 #############################################
 
