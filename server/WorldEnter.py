@@ -1,4 +1,4 @@
-# WorldEnter.py
+
 from typing import Dict
 
 from BitBuffer import BitBuffer

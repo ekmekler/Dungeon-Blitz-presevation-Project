@@ -1,4 +1,4 @@
-# Character.py
+
 
 import os
 import json
