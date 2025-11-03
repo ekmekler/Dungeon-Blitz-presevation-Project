@@ -6,7 +6,7 @@ from BitBuffer import BitBuffer
 from globals import level_registry, level_npcs, level_players, all_sessions
 
 #AI needs a lot more work to be done so will keep it off for now
-AI_ENABLED = True
+AI_ENABLED = False
 
 AI_INTERVAL = 0.125
 TIMESTEP = 1 / 60.0
