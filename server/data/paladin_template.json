@@ -8870,14 +8870,12 @@
         "buildingID": 0,
         "rank": 0,
         "ReadyTime": 0,
-        "done": true,
-        "isInstant": false
+        "done": true
     },
     "talentResearch": {
         "classIndex": null,
         "ReadyTime": 0,
-        "done": true,
-        "isInstant": false
+        "done": true
     },
     "EggHachery": {
         "EggID": 0,
