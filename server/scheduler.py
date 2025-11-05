@@ -182,13 +182,7 @@ def schedule_building_upgrade(user_id: str, char_name: str, ready_ts: int):
         run_at=ready_ts,
         callback=lambda uid=user_id, cn=char_name: _on_building_done_for(uid, cn)
     )
-    # Store the scheduler ID so it can be canceled later
-    chars = load_characters(user_id)
-    char = next((c for c in chars if c.get("name") == char_name), None)
-    if char:
-        bu = char.setdefault("buildingUpgrade", {})
-        bu["schedule_id"] = handle
-        save_characters(user_id, chars)
+    return handle
 
 def _on_forge_done_for(user_id: str, char_name: str, primary: int, secondary: int):
     # 1) Load persistent data
