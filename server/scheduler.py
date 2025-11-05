@@ -350,5 +350,3 @@ def boot_scan_all_saves():
             print(f"Boot‑scan: patched expired timers in {os.path.basename(path)}")
 
 boot_scan_all_saves()
-
-

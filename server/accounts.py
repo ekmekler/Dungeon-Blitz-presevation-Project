@@ -1,12 +1,10 @@
-
-
 import os
 import json
 import struct
 import tempfile
+
 from threading import Lock
 from uuid import uuid4
-
 from BitBuffer import BitBuffer
 
 _ACCOUNTS_PATH = "Accounts.json"
@@ -18,11 +16,9 @@ def _atomic_write(path: str, data) -> None:
     Atomically write JSON-serializable `data` to `path`.
     Writes to a temp file then renames it into place.
     """
-    # Ensure directory exists
     dirpath = os.path.dirname(path) or "."
     os.makedirs(dirpath, exist_ok=True)
 
-    # Write to a temp file in the same directory
     with tempfile.NamedTemporaryFile("w", dir=dirpath, delete=False, encoding="utf-8") as tf:
         json.dump(data, tf, ensure_ascii=False, indent=2)
         tf.flush()
@@ -98,5 +94,3 @@ def build_popup_packet(message: str, disconnect: bool = False) -> bytes:
     buf.write_method_6(1 if disconnect else 0, 1)
     payload = buf.to_bytes()
     return struct.pack(">HH", 0x1B, len(payload)) + payload
-
-

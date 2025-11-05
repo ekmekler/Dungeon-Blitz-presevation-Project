@@ -14,17 +14,17 @@ from WorldEnter import build_enter_world_packet, Player_Data_Packet
 from accounts import build_popup_packet, is_character_name_taken, _SAVES_DIR, load_accounts, get_or_create_user_id
 from bitreader import BitReader
 from constants import GearType, EntType, class_64, class_1, DyeType, class_118, method_277, \
-    get_ability_info, load_building_data, find_building_data, class_66, LinkUpdater, PowerType, Entity, Game,\
+    get_ability_info, load_building_data, find_building_data, class_66, PowerType, Entity, Game,\
     index_to_node_id, door, class_119
 from BitBuffer import BitBuffer
 from constants import get_dye_color
 from entity import Send_Entity_Data, load_npc_data_for_level
 from globals import level_npcs, pending_world, used_tokens, session_by_token, extended_sent_map, current_characters, \
-    _level_add, SECRET, build_start_skit_packet, send_premium_purchase, send_consumable_update, _send_error, \
+    _level_add, SECRET, build_start_skit_packet, send_premium_purchase, _send_error, \
     level_players
 from level_config import DOOR_MAP, LEVEL_CONFIG, get_spawn_coordinates, resolve_special_mission_doors
 from scheduler import scheduler, _on_research_done_for, schedule_building_upgrade, \
-    schedule_forge, _on_talent_done_for, schedule_Talent_point_research
+_on_talent_done_for, schedule_Talent_point_research
 from missions import _MISSION_DEFS_BY_ID
 from ai_logic import run_ai_loop, ensure_ai_loop, AI_ENABLED
 
@@ -2633,7 +2633,7 @@ def send_existing_entities_to_joiner(joiner, all_sessions):
 
 def handle_entity_full_update(session, data, all_sessions):
     """
-    Handle a full entity spawn/update (packet type 0x08) from a client.
+    Handle a full entity spawn/update (packet type 0x08)
     - Parses and stores entity info.
     - Marks player entity IDs.
     - Sends 0x0F spawn packets so players see each other.
@@ -2641,7 +2641,6 @@ def handle_entity_full_update(session, data, all_sessions):
     """
     payload = data[4:]
     br = BitReader(payload, debug=True)
-
     try:
         # ── Parse fields ──
         entity_id  = br.read_method_9()
@@ -2764,17 +2763,13 @@ def handle_entity_incremental_update(session, data, all_sessions):
             'b_dropping':  bool(br.read_method_15()),
             'b_backpedal': bool(br.read_method_15()),
         }
-
         is_airborne = bool(br.read_method_15())
         velocity_y = br.read_method_24() if is_airborne else 0
-
         ent = session.entities.get(entity_id, {})
         old_x = ent.get('pos_x', 0)
         old_y = ent.get('pos_y', 0)
-
         new_x = old_x + delta_x
         new_y = old_y + delta_y
-
         ent.update({
             'pos_x': new_x,
             'pos_y': new_y,

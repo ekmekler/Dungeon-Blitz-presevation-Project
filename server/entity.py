@@ -1,10 +1,9 @@
 import json
 import os
 
+from typing import Dict, Any
 from BitBuffer import BitBuffer
 from constants import Entity, class_7, class_20, class_3, Game, LinkUpdater, EntType, GearType, class_64, class_21
-from typing import Dict, Any
-npc_cache = {}
 """
 Hints NPCs data 
 [
@@ -91,7 +90,6 @@ entState :
       "entState": 1,
     }
 """
-
 def load_npc_data_for_level(level_name: str) -> list:
     json_path = os.path.join("world_npcs", f"{level_name}.json")
     try:

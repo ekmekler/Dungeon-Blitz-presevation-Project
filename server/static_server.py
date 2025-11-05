@@ -1,4 +1,3 @@
-
 import threading
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 def start_static_server(

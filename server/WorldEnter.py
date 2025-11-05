@@ -1,4 +1,3 @@
-
 from typing import Dict
 
 from BitBuffer import BitBuffer
@@ -734,5 +733,3 @@ def build_enter_world_packet(
 
     payload = buf.to_bytes()
     return struct.pack(">HH", 0x21, len(payload)) + payload
-
-
