@@ -445,7 +445,6 @@ def handle_gameserver_login(session, data, conn):
 
     print(f"[{session.addr}] NPCs synced for level {session.current_level}")
 
-
 def handle_level_transfer_request(session, data, conn):
     """
     Handle PKTTYPE_LEVEL_TRANSFER_REQUEST (0x1D)
@@ -585,9 +584,6 @@ def ensure_level_npcs(level_name):
             level_npcs[level_name] = {}
     return level_npcs[level_name]
 
-
-
-
 #TODO...
 def handle_talk_to_npc(session, data, all_sessions):
     payload = data[4:]
@@ -726,109 +722,6 @@ def build_loot_drop_packet(entity_id: int, x: int, y: int,
     header  = struct.pack('>HH', 0x32, len(payload))
     return header + payload
 
-
-def handle_grant_reward(session, data, all_sessions):
-    payload = data[4:]
-    br = BitReader(payload, debug=True)
-    try:
-        grantor_id    = br.read_method_9()
-        target_id     = br.read_method_9()
-
-        flag_showXP   = bool(br.read_method_15())
-        xp_rate       = br.read_float()
-
-        flag_showGold = bool(br.read_method_15())
-        gold_rate     = br.read_float()
-
-        flag_showHeal = bool(br.read_method_15())
-        flag_showMana = bool(br.read_method_15())
-
-        code_xpType   = br.read_method_9()
-        code_goldType = br.read_method_9()
-        code_manaType = br.read_method_9()
-        code_healType = br.read_method_9()
-
-        # **NOW** read the drop coordinates:
-        drop_x = br.read_method_24()   # signed 24-bit
-        drop_y = br.read_method_24()   # signed 24-bit
-
-        has_extra     = bool(br.read_method_15())
-        extra_id      = br.read_method_9() if has_extra else None
-
-    except Exception as e:
-        print("…parsing error…")
-        # …
-        return
-
-    # log for sanity:
-    #print(f"[PKT2A] grantor={grantor_id} target={target_id} coords=({drop_x},{drop_y}) "
-          #f"XP?{flag_showXP}@{xp_rate} Gold?{flag_showGold}@{gold_rate} Extra?{extra_id}")
-
-    # now build loot_drops using the true drop_x, drop_y:
-    loot_drops = []
-    if flag_showXP:
-        loot_drops.append(('xp', code_xpType, int(xp_rate)))
-    if flag_showGold:
-        loot_drops.append(('gold', code_goldType, int(gold_rate)))
-    if flag_showHeal:
-        loot_drops.append(('healing', code_healType, 0))
-    if flag_showMana:
-        loot_drops.append(('mana', code_manaType, 0))
-    if extra_id:
-        # the client expects two fixed‐width values for gear:
-        loot_drops.append(('gear', extra_id, extra_id))
-
-    # broadcast one 0x32 per drop:
-    for rtype, v1, v2 in loot_drops:
-        pkt = build_loot_drop_packet(
-            entity_id=target_id,
-            x=drop_x,
-            y=drop_y,
-            reward_type=rtype,
-            value1=v1,
-            value2=v2
-        )
-        for other in all_sessions:
-            if other.world_loaded and other.current_level == session.current_level:
-                other.conn.sendall(pkt)
-                #print(f"[PKT2A] → DROP {rtype} @({drop_x},{drop_y}) to {other.addr}")
-
-
-def handle_change_max_speed(session, data, all_sessions):
-    payload = data[4:]
-    br = BitReader(payload, debug=True)
-
-    # Parse entity ID and speed modifier
-    try:
-        entity_id = br.read_method_4()
-        speed_mod_int = br.read_method_4()
-    except Exception as e:
-        #print(f"[{session.addr}] [PKT0x8A] Error parsing packet: {e}")
-        return
-
-    # Find the entity
-    entity = session.entities.get(entity_id)
-    if not entity:
-        #print(f"[{session.addr}] [PKT0x8A] Entity {entity_id} not found")
-        return
-
-    # Update the entity's behaviorSpeedMod
-    entity['behaviorSpeedMod'] = speed_mod_int * LinkUpdater.VELOCITY_DEFLATE
-    #print(f"[{session.addr}] [PKT0x8A] Updated entity {entity_id} behaviorSpeedMod to {entity['behaviorSpeedMod']}")
-
-    # Build the broadcast packet
-    bb = BitBuffer()
-    bb.write_method_4(entity_id)
-    bb.write_method_4(speed_mod_int)  # Send the original integer value
-    payload = bb.to_bytes()
-    packet = struct.pack(">HH", 0x8A, len(payload)) + payload
-
-    # Broadcast to all clients in the same level
-    for other_session in all_sessions:
-        if other_session.world_loaded and other_session.current_level == session.current_level:
-            other_session.conn.sendall(packet)
-
-
 def handle_lockbox_reward(session):
     CAT_BITS = 3
     ID_BITS = 6
@@ -910,8 +803,6 @@ def send_talent_tree_packet(session, entity_id):
     session.conn.sendall(pkt)
     print(f"[Reply 0xC1] TalentTree for class {mc}, total slots: {len(nodes)}")
 
-
-
 def handle_masterclass_packet(session, raw_data):
     payload = raw_data[4:]
     br = BitReader(payload)
@@ -939,11 +830,6 @@ def handle_masterclass_packet(session, raw_data):
     send_talent_tree_packet(session, entity_id)
 
 def handle_clear_talent_research(session, data):
-    """
-    Handle 0xDF: client cleared the current talent research.
-    Payload: [ header(4) ] (no body)
-    """
-    # 1) Locate the character
     char = next((c for c in session.char_list
                  if c.get("name") == session.current_character), None)
     if not char:
@@ -1028,8 +914,6 @@ def handle_gear_packet(session, raw_data):
     # 3) Persist via helper
     save_characters(session.user_id, session.char_list)
     print(f"[Save] slot {slot} updated with gear {gear_id}, inventory count = {len(inv)}")
-
-
 
 def handle_equip_rune(session, raw_data):
     payload = raw_data[4:]
@@ -1172,12 +1056,7 @@ def send_look_update_packet(session, entity_id, head, hair, mouth, face, gender,
 
     payload = bb.to_bytes()
     packet_type = 0x8F
-
-    # Send packet: header (type, length) + payload
     session.conn.sendall(struct.pack(">HH", packet_type, len(payload)) + payload)
-
-    # Optional logging for debugging
-    print(f"[LookUpdate] Sent packet 0x{packet_type:02X} for entity {entity_id}")
 
 def handle_change_look(session, raw_data, all_sessions):
     """
@@ -1254,8 +1133,6 @@ def handle_change_look(session, raw_data, all_sessions):
                 head, hair, mouth, face,
                 gender, hair_color, skin_color
             )
-
-
 
 def handle_create_gearset(session, raw_data):
     """
@@ -1450,7 +1327,6 @@ def handle_update_equipment(session, raw_data):
     # Echo back to client
     session.conn.sendall(raw_data)
 
-
 def handle_private_message(session, data, all_sessions):
     payload = data[4:]
     try:
@@ -1502,9 +1378,6 @@ def handle_private_message(session, data, all_sessions):
     except Exception as e:
         print(f"[{session.addr}] [PKT46] Parse error: {e}, raw payload = {payload.hex()}")
 
-
-
-
 def Client_Crash_Reports(session, data):
     """
     Read a CLIENT ERROR (0x7C) packet and log it.
@@ -1519,7 +1392,6 @@ def Client_Crash_Reports(session, data):
     except Exception:
         msg = repr(payload)
     print(f"[{session.addr}] CLIENT ERROR (0x7C): {msg}")
-
 
 def handle_request_door_state(session, data, conn):
     """
@@ -1604,8 +1476,6 @@ def handle_request_door_state(session, data, conn):
     except Exception as e:
         print(f"[{session.addr}] [0x41] Failed to send door state: {e}")
 
-
-
 def Start_Skill_Research(session, data, conn):
     br = BitReader(data[4:], debug=True)
     try:
@@ -1659,7 +1529,6 @@ def Start_Skill_Research(session, data, conn):
 
     except Exception as e:
         print(f"[{session.addr}] [0xBE] Error: {e}")
-
 
 def handle_research_claim(session):
     """
@@ -1732,8 +1601,6 @@ def Skill_Research_Cancell_Request(session):
     save_characters(session.user_id, session.char_list)
     print(f"[{session.addr}] [0xDD] Research cancelled for abilityID={ability_id}")
 
-
-
 def Skill_SpeedUp(session, data):
     """
     Handles skill research speed-up request (0xDE).
@@ -1779,13 +1646,7 @@ def Skill_SpeedUp(session, data):
     except Exception as e:
         print(f"[{session.addr}] [0xDE] Failed to send 0xBF: {e}")
 
-
-
 def handle_building_upgrade(session, data):
-    """
-    Handle 0xD7: client requested a building upgrade.
-    Payload = [ header(4) | buildingID(5) | rank(5) | isInstant(1) ]
-    """
     load_building_data()
 
     try:
@@ -1860,13 +1721,7 @@ def handle_building_upgrade(session, data):
     except Exception as e:
         print(f"[{session.addr}] [0xD7] Error: {e}")
 
-
-
 def handle_speedup_request(session, data):
-    """
-    Handle 0xDC: client clicked 'Speed-up' for building upgrade.
-    Payload: [header(4) | idolCost(method_9)].
-    """
     payload = data[4:]
     br = BitReader(payload, debug=True)
     try:
@@ -1936,9 +1791,6 @@ def handle_speedup_request(session, data):
     except Exception as e:
         print(f"[{session.addr}] [0xDC] failed to send 0xD8: {e}")
 
-
-
-
 def handle_cancel_upgrade(session, data):
     """
     Handle 0xDB: client canceled an ongoing building upgrade.
@@ -1966,9 +1818,6 @@ def handle_cancel_upgrade(session, data):
     mem = next((c for c in session.char_list if c.get("name") == session.current_character), None)
     if mem:
         mem["buildingUpgrade"] = char["buildingUpgrade"].copy()
-
-
-
 
 def handle_building_claim(session, data):
     """
@@ -2002,8 +1851,6 @@ def handle_building_claim(session, data):
 
     print(f"[{session.addr}] [0xD9] building upgrade claim ack "
           f"(buildingID={building_id}, rank={rank})")
-
-
 
 def handle_train_talent_point(session, data):
     payload = data[4:]
@@ -2060,8 +1907,6 @@ def handle_train_talent_point(session, data):
         save_characters(session.user_id, session.char_list)
         send_premium_purchase(session, "TalentResearch", idol_cost)
         _on_talent_done_for(session.user_id, session.current_character)
-
-
 
 def handle_talent_speedup(session, data):
     """
@@ -2126,9 +1971,6 @@ def handle_talent_speedup(session, data):
     except Exception as e:
         print(f"[{session.addr}] [0xE0] failed to send 0xD5: {e}")
 
-
-
-
 def handle_talent_claim(session, data):
     """
     Handle 0xD6: client claiming a completed talent research.
@@ -2165,14 +2007,11 @@ def handle_talent_claim(session, data):
 
     print(f"[{session.addr}] [0xD6] Awarded talent point for classIndex={class_idx}")
 
-
-
 def handle_hp_increase_notice(session, data):
        pass
 
 def handle_char_regen(session, data):
       pass
-
 
 def handle_volume_enter(session, data):
      pass
@@ -2196,58 +2035,8 @@ def handle_change_offset_y(session, data):
     except Exception as e:
         print(f"[{session.addr}] [PKT125] Error parsing packet: {e}")
 
-def handle_request_respawn(session, data, all_sessions):
-    br = BitReader(data[4:], debug=False)
-    try:
-        use_potion = bool(br.read_method_15())
-    except:
-        return
-
-    # 3) Deduct a potion server-side and update client inventory
-    if use_potion:
-        for char in session.char_list:
-            if char['name'] == session.current_character:
-                for item in char.get('consumables', []):
-                    if item.get('consumableID') == 9:
-                        if item['count'] > 0:
-                            item['count'] -= 1
-                            new_count = item['count']
-                            print(f"[{session.addr}] [PKT77] Used potion, new count={new_count}")
-                            # 3a) Persist save
-                            save_characters(session.user_id, session.char_list)
-                            # 3b) Inform client of new count
-                            send_consumable_update(session.conn, 9, new_count)
-                        # if count was zero, we silently proceed (client will handle empty)
-                        break
-                break
-
-    # 4) Send RESPAWN_COMPLETE (0x80)
-    #TODO....
-    # compute actual spawn location
-    spawn_pos = 0
-    bb = BitBuffer()
-    bb.write_signed_method_45(spawn_pos)
-    bb.write_method_11(1 if use_potion else 0, 1)
-    body = bb.to_bytes()
-    session.conn.sendall(struct.pack(">HH", 0x80, len(body)) + body)
-
-    # 5) Immediately restore health via CHAR_REGEN (0x78)
-    heal_amount = 10000
-    bb2 = BitBuffer()
-    bb2.write_method_9(session.clientEntID or 0)
-    bb2.write_method_24(heal_amount)
-    body2 = bb2.to_bytes()
-    session.conn.sendall(struct.pack(">HH", 0x78, len(body2)) + body2)
-
-    print(f"[{session.addr}] [PKT77] Respawned at {spawn_pos}, potion_used={use_potion}")
-
-
-
-
 #handled
 #############################################
-
-
 
 def handle_apply_dyes(session, payload, all_sessions):
     br = BitReader(payload)
@@ -2451,11 +2240,7 @@ def handle_pet_info_packet(session, data, all_sessions):
     Handle packet type 0xB3 (SendPetInfoToServer).
     Updates the active pet (equippedPetID) and the restingPets list in the save file.
     """
-
-
-
-
-    payload = data[4:]  # Skip header (0x00b3 + length)
+    payload = data[4:]
     reader = BitReader(payload, debug=True)
 
     try:
@@ -2581,102 +2366,8 @@ def handle_emote_begin(session, data, all_sessions):
             except Exception as e:
                 print(f"[{session.addr}] [PKT7E] Error forwarding to {other.addr}: {e}")
 
-def handle_entity_destroy(session, data, all_sessions):
-    """
-    Packet 0x0D: an entity is destroyed/removed.
-    Client sends: method_9(entityID)
-    We'll parse, remove from our map, and broadcast to peers.
-    """
 
 
-    # 2) Parse payload
-    payload = data[4:]
-    br = BitReader(payload, debug=False)
-    try:
-        # Client uses method_9 to write the ID:
-        entity_id = br.read_method_9()
-        # No boolean is actually written by the client, so we don't consume extra bits.
-    except Exception as e:
-        print(f"[{session.addr}] [PKT0D] Parse error: {e}, raw={payload.hex()}")
-        return
-
-    #print(f"[{session.addr}] [PKT0D] Entity destroy for ID {entity_id}")
-
-    # 3) Remove from this session's entity map
-    if entity_id in session.entities:
-        del session.entities[entity_id]
-        #print(f"[{session.addr}] [PKT0D] Removed entity {entity_id} from server map")
-
-    # If this was the player, clear clientEntID
-    if session.clientEntID == entity_id:
-        session.clientEntID = None
-
-    # 4) Broadcast to peers
-    for other in all_sessions:
-        if (other is not session
-            and other.world_loaded
-            and other.current_level == session.current_level):
-            try:
-                other.conn.sendall(data)
-                print(f"[{session.addr}] [PKT0D] Broadcasted destroy to {other.addr}")
-            except Exception as e:
-                print(f"[{session.addr}] [PKT0D] Error sending to {other.addr}: {e}")
-
-def PKTTYPE_BUFF_TICK_DOT(session, data, all_sessions):
-
-
-    # 1) Strip off 0x79 + length, feed to BitReader
-    payload = data[4:]
-    br = BitReader(payload, debug=False)
-    try:
-
-        target_id     = br.read_method_9()
-        source_id     = br.read_method_9()
-        power_type_id = br.read_method_9()
-        amount        = br.read_method_24()
-    except Exception as e:
-        print(f"[{session.addr}] [PKT79] Parse error: {e}, raw={payload.hex()}")
-        return
-
-    print(f"[{session.addr}] [PKT79] Buff tick: target={target_id}, "
-          f"source={source_id}, power={power_type_id}, amount={amount}")
-
-    # 2) Rebroadcast the exact same bytes to peers
-    for other in all_sessions:
-        if (other is not session
-            and other.world_loaded
-            and other.current_level == session.current_level):
-            try:
-                other.conn.sendall(data)
-            except Exception as e:
-                print(f"[{session.addr}] [PKT79] Forward error to {other.addr}: {e}")
-
-
-def handle_respawn_ack(session, data, all_sessions):
-
-    br = BitReader(data[4:], debug=False)
-    try:
-        entity_id = br.read_method_9()
-        spawn_pos = br.read_method_24()
-        used_potion = bool(br.read_method_15())
-    except Exception as e:
-        print(f"[{session.addr}] [PKT82] Parse error: {e}")
-        return
-
-    # Update server state: mark entity alive at spawn_pos
-    ent = session.entities.get(entity_id)
-    if ent is not None:
-        ent['pos_x'] = spawn_pos
-        ent['pos_y'] = 0    # or default
-        ent['is_alive'] = True
-        print(f"[{session.addr}] [PKT82] Entity {entity_id} respawned at {spawn_pos}, potion={used_potion}")
-
-        # Optionally broadcast to peers: raw 0x82 or a custom update
-        for other in all_sessions:
-            if other is not session and other.world_loaded and other.current_level == session.current_level:
-                other.conn.sendall(data)
-    else:
-        print(f"[{session.addr}] [PKT82] Unknown entity {entity_id}")
 
 def handle_group_invite(session, data, all_sessions):
     """
@@ -2778,229 +2469,6 @@ def handle_public_chat(session, data, all_sessions):
             print(f"[{session.addr}] [PKT2C] → \"{message}\" to {other.addr} ({other.current_character})")
         except Exception as e:
             print(f"[{session.addr}] [PKT2C] Error sending to {other.addr}: {e}")
-
-def handle_remove_buff(session, data, all_sessions):
-    """
-    Packet 0x0C: “remove buff” — client telling server to remove a buff.
-    Mirrors AS3 method_1837:
-      method_9(entity.id),
-      method_9(buffTypeID),
-      method_9(param2)
-    """
-
-
-    # 1) Strip header
-    payload = data[4:]
-    br = BitReader(payload, debug=False)
-
-    try:
-        # 2) Read all three var‐ints
-        entity_id   = br.read_method_9()  # param1.id
-        buff_type   = br.read_method_9()  # param2
-        instance_id = br.read_method_9()  # param3
-
-        # 3) Log parsed values
-        props = {
-            'entity_id':   entity_id,
-            'buff_type':   buff_type,
-            'instance_id': instance_id,
-        }
-        #print(f"[{session.addr}] [PKT0C] Parsed remove-buff:")
-        #pprint.pprint(props, indent=4)
-
-        # 4) Broadcast unchanged packet to peers
-        for other in all_sessions:
-            if (other is not session
-                and other.world_loaded
-                and other.current_level == session.current_level):
-                other.conn.sendall(data)
-                print(f"[{session.addr}] [PKT0C] Broadcasted to {other.addr}")
-
-    except Exception as e:
-        print(f"[{session.addr}] [PKT0C] Error parsing remove-buff: {e}, raw={payload.hex()}")
-        if br.debug:
-            for line in br.get_debug_log():
-                print(line)
-
-def handle_add_buff(session, data, all_sessions):
-    """
-    Packet 0x0B: “add buff” — applies a buff/debuff with optional numeric modifiers.
-    Mirrors AS3 method_1262:
-      method_9(entity.id),
-      method_9(param2),
-      method_9(param3),
-      method_9(param5),
-      method_9(param4),
-      method_9(param6),
-      method_15(vector!=null),
-      [vector length + (powerNodeTypeID, modCount, modValues...)]
-    """
-
-
-    # 1) Strip header
-    payload = data[4:]
-    br = BitReader(payload, debug=False)
-
-    try:
-        # 2) Read the six uints (all via method_9)
-        entity_id  = br.read_method_9()
-        param2     = br.read_method_9()
-        param3     = br.read_method_9()
-        param5     = br.read_method_9()   # note: client writes param5 _before_ param4
-        param4     = br.read_method_9()
-        param6     = br.read_method_9()
-
-        # 3) Optional Vector.<class_140>
-        has_vector = bool(br.read_method_15())
-        vector     = []
-        if has_vector:
-            length = br.read_method_9()
-            for _ in range(length):
-                power_node_type_id = br.read_method_9()
-                mod_count          = br.read_method_9()
-                mods               = [br.read_method_560() for _ in range(mod_count)]
-                vector.append({
-                    'power_node_type_id': power_node_type_id,
-                    'mod_values':         mods
-                })
-
-        # 4) Log parsed values
-        props = {
-            'entity_id': entity_id,
-            'param2':     param2,
-            'param3':     param3,
-            'param4':     param4,
-            'param5':     param5,
-            'param6':     param6,
-            'vector':     vector if has_vector else None
-        }
-        #print(f"[{session.addr}] [PKT0B] Parsed add-buff:")
-        #pprint.pprint(props, indent=4)
-
-        # 5) Broadcast unchanged packet to peers
-        for other in all_sessions:
-            if (other is not session
-                and other.world_loaded
-                and other.current_level == session.current_level):
-                other.conn.sendall(data)
-
-    except Exception as e:
-        print(f"[{session.addr}] [PKT0B] Error parsing add-buff: {e}, raw={payload.hex()}")
-        if br.debug:
-            for line in br.get_debug_log():
-                print(line)
-
-
-def handle_projectile_explode(session, data, all_sessions):
-    """
-    Packet 0x0E: “projectile explode” event.
-    Mirrors AS3 WriteProjectileExplode:
-      method_9(entity.id),
-      method_9(remoteMissileID),
-      method_24(param3), method_24(param4),
-      method_15(flag)
-    """
-
-
-    # 1) Strip packet header
-    payload = data[4:]
-    br = BitReader(payload, debug=False)
-
-    try:
-        # 2) Read projectile owner entity ID and the missile’s remote ID
-        entity_id       = br.read_method_9()
-        remote_missile  = br.read_method_9()
-
-        # 3) Read explosion position (24-bit var‐int)
-        x = br.read_method_24()
-        y = br.read_method_24()
-
-        # 4) Read the final flag (e.g. “spawn splatter”)
-        flag = bool(br.read_method_15())
-
-        # 5) Log for verification
-        props = {
-            'entity_id':      entity_id,
-            'remote_missile': remote_missile,
-            'x':              x,
-            'y':              y,
-            'flag':           flag,
-        }
-        #print(f"[{session.addr}] [PKT0E] Parsed projectile-explode:")
-        #pprint.pprint(props, indent=4)
-
-        # 6) Broadcast raw packet to peers
-        for other in all_sessions:
-            if (other is not session
-                and other.world_loaded
-                and other.current_level == session.current_level):
-                other.conn.sendall(data)
-
-    except Exception as e:
-        print(f"[{session.addr}] [PKT0E] Error parsing projectile explode: {e}, raw={payload.hex()}")
-        if br.debug:
-            for line in br.get_debug_log():
-                print(line)
-
-
-def handle_power_hit(session, data, all_sessions):
-    """
-    Packet 0x0A: “power hit” event — source hit target, with optional extra params.
-    Mirrors AS3 method_1092 exactly.
-    """
-
-
-    # 1) Strip packet header
-    payload = data[4:]
-    br = BitReader(payload, debug=False)
-
-    try:
-        # 2) Read IDs (both written with method_9 in AS3)
-        target_id = br.read_method_9()   # param3.id in client
-        source_id = br.read_method_9()   # param1.id in client
-
-        # 3) Read damage/effect value as 24-bit
-        value     = br.read_method_24()  # param4
-
-        # 4) Read powerID (var-int)
-        power_id  = br.read_method_9()   # param2.powerID
-
-        # 5) Optional param5 (var-int)
-        has_p5    = bool(br.read_method_15())
-        param5    = br.read_method_9() if has_p5 else 0
-
-        # 6) Optional param6 (var-int)
-        has_p6    = bool(br.read_method_15())
-        param6    = br.read_method_9() if has_p6 else 0
-
-        # 7) Final boolean flag (crit? or similar)
-        param7    = bool(br.read_method_15())
-
-        # 8) Log what we got
-        props = {
-            'target_id': target_id,
-            'source_id': source_id,
-            'value':      value,
-            'power_id':   power_id,
-            'param5':     param5 if has_p5 else None,
-            'param6':     param6 if has_p6 else None,
-            'flag':       param7,
-        }
-        #print(f"[{session.addr}] [PKT0A] Parsed power-hit:")
-        #pprint.pprint(props, indent=4)
-
-        # 9) Broadcast unchanged packet to other clients
-        for other in all_sessions:
-            if (other is not session
-                and other.world_loaded
-                and other.current_level == session.current_level):
-                other.conn.sendall(data)
-
-    except Exception as e:
-        print(f"[{session.addr}] [PKT0A] Error parsing power-hit: {e}, raw={payload.hex()}")
-        if br.debug:
-            for line in br.get_debug_log():
-                print(line)
 
 def handle_power_cast(session, data, all_sessions):
 
@@ -3346,7 +2814,7 @@ def handle_start_skit(session, data, all_sessions):
     - Reads entity ID, boolean flag, and text.
     - Sends PKT_ROOM_THOUGHT (0x76) only if flag is True.
     """
-    payload = data[4:]  # Strip 4-byte header
+    payload = data[4:]
     br = BitReader(payload, debug=True)
     try:
         entity_id = br.read_method_9()
