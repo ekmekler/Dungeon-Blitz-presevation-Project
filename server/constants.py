@@ -312,51 +312,30 @@ NEWS_EVENTS = {
 }
                #Loaders
 ################################################################
-with open("data/DyeTypes.json", "r", encoding="utf-8") as f:
-    DYE_DATA = json.load(f)
-
-def get_dye_color(dye_id):
-    dye = DYE_DATA.get(str(dye_id))
-    if dye:
-        return dye["color"]
-    return None
-
-def load_ability_data():
+def _load_json(path, default=None):
     try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        json_path = os.path.join(base_dir, "data/AbilityTypes.json")
-        with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data
-    except FileNotFoundError:
-        print(f"Error: AbilityTypes.json not found at {json_path}")
-        return []
-    except json.JSONDecodeError as e:
-        print(f"Error: Failed to parse AbilityTypes.json: {e}")
-        return []
-ABILITY_DATA = load_ability_data()
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"[WARN] Could not load {path}: {e}")
+        return default if default is not None else {}
 
-def get_ability_info(ability_id, rank):
-    for entry in ABILITY_DATA:
-        if entry.get("AbilityID") == str(ability_id) and entry.get("Rank") == str(rank):
-            return {
-                "AbilityID": int(entry.get("AbilityID", 0)),
-                "Rank": int(entry.get("Rank", 0)),
-                "GoldCost": int(entry.get("GoldCost", 0)),
-                "IdolCost": int(entry.get("IdolCost", 0)),
-                "UpgradeTime": int(entry.get("UpgradeTime", 0))
-            }
+DYE_DATA       = _load_json("data/DyeTypes.json", {})
+ABILITY_DATA   = _load_json(os.path.join(os.path.dirname(__file__), "data/AbilityTypes.json"), [])
+BUILDING_DATA  = _load_json("data/BuildingTypes.json", [])
+
+def get_dye_color(dye_id: int | str):
+    dye = DYE_DATA.get(str(dye_id))
+    return dye and dye.get("color")
+
+def get_ability_info(ability_id: int, rank: int):
+    for e in ABILITY_DATA:
+        if e.get("AbilityID") == str(ability_id) and e.get("Rank") == str(rank):
+            return {k: int(e.get(k, 0)) for k in ("AbilityID", "Rank", "GoldCost", "IdolCost", "UpgradeTime")}
     return None
-BUILDING_DATA = []
-
-def load_building_data():
-    global BUILDING_DATA
-    if not BUILDING_DATA:
-        with open("data/BuildingTypes.json", "r", encoding="utf-8") as f:
-            BUILDING_DATA = json.load(f)
 
 def find_building_data(building_id: int, rank: int):
     for b in BUILDING_DATA:
-        if int(b["BuildingID"]) == building_id and int(b["Rank"]) == rank:
+        if int(b.get("BuildingID", -1)) == building_id and int(b.get("Rank", -1)) == rank:
             return b
     return None

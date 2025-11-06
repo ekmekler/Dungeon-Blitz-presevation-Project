@@ -8,7 +8,7 @@ from Character import save_characters, build_paperdoll_packet, get_inventory_gea
     build_level_gears_packet, SAVE_PATH_TEMPLATE
 from bitreader import BitReader
 from constants import GearType, EntType, class_64, class_1, DyeType, class_118, method_277, \
-    get_ability_info, load_building_data, find_building_data, class_66, PowerType, Entity, Game,\
+    get_ability_info, find_building_data, class_66, PowerType, Entity, Game,\
     index_to_node_id
 from BitBuffer import BitBuffer
 from constants import get_dye_color
@@ -1015,23 +1015,18 @@ def Skill_SpeedUp(session, data):
         print(f"[{session.addr}] [0xDE] Failed to send 0xBF: {e}")
 
 def handle_building_upgrade(session, data):
-    load_building_data()
-
     try:
-        # --- 1) Parse incoming packet ---
         payload = data[4:]
         br = BitReader(payload, debug=True)
 
         building_id = br.read_method_20(5)
         client_rank = br.read_method_20(5)
-        used_idols  = bool(br.read_method_15())  # client flag, we just treat as "paid with idols"
+        used_idols  = bool(br.read_method_15())
 
         print(f"[{session.addr}] [0xD7] Upgrade request: "
               f"buildingID={building_id}, rank={client_rank}, idols={used_idols}")
 
-        # --- 2) Locate character ---
-        char = next(c for c in session.char_list
-                    if c["name"] == session.current_character)
+        char = next(c for c in session.char_list if c["name"] == session.current_character)
 
         mf = char.setdefault("magicForge", {})
         stats_dict = mf.setdefault("stats_by_building", {})
@@ -1043,43 +1038,45 @@ def handle_building_upgrade(session, data):
                   f"(current={current_rank}, requested={client_rank})")
             return
 
-        # --- 3) Look up building data ---
         bdata        = find_building_data(building_id, client_rank)
         gold_cost    = int(bdata["GoldCost"])
         idol_cost    = int(bdata.get("IdolCost", 0))
         upgrade_time = int(bdata["UpgradeTime"])
 
-        # --- 4) Handle currency ---
         if used_idols:
-            if char.get("mammothIdols", 0) < idol_cost:
-                print(f"[{session.addr}] [0xD7] not enough idols "
-                      f"({char.get('mammothIdols')} < {idol_cost})")
+            current_idols = int(char.get("mammothIdols", 0))
+            if current_idols < idol_cost:
+                print(f"[{session.addr}] [0xD7] not enough idols ({current_idols} < {idol_cost})")
                 return
-            char["mammothIdols"] -= idol_cost
+            char["mammothIdols"] = current_idols - idol_cost
             send_premium_purchase(session, "BuildingUpgrade", idol_cost)
-            print(f"[{session.addr}] Deducted {idol_cost} idols for upgrade")
+            print(f"[{session.addr}] Deducted {idol_cost} idols for upgrade "
+                  f"→ Remaining: {char['mammothIdols']}")
         else:
-            if char.get("gold", 0) < gold_cost:
-                print(f"[{session.addr}] [0xD7] not enough gold "
-                      f"({char.get('gold')} < {gold_cost})")
+            current_gold = int(char.get("gold", 0))
+            if current_gold < gold_cost:
+                print(f"[{session.addr}] [0xD7] not enough gold ({current_gold} < {gold_cost})")
                 return
-            char["gold"] -= gold_cost
-            print(f"[{session.addr}] Deducted {gold_cost} gold for upgrade")
+            char["gold"] = current_gold - gold_cost
+            print(f"[{session.addr}] Deducted {gold_cost} gold for upgrade "
+                  f"→ Remaining: {char['gold']}")
 
-        # --- 5) Compute finish time ---
         now = int(time.time())
         ready_time = now + upgrade_time
 
-        # --- 6) Persist pending upgrade ---
         char["buildingUpgrade"] = {
             "buildingID": building_id,
             "rank": client_rank,
             "ReadyTime": ready_time,
             "done": False
         }
-        save_characters(session.user_id, session.char_list)
 
-        # --- 7) Schedule completion ---
+        for i, c in enumerate(session.char_list):
+            if c["name"] == session.current_character:
+                session.char_list[i] = char
+                break
+
+        save_characters(session.user_id, session.char_list)
         schedule_building_upgrade(
             session.user_id,
             session.current_character,
