@@ -343,6 +343,6 @@ def boot_scan_all_saves():
         if dirty:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-            print(f"Boot‑scan: patched expired timers in {os.path.basename(path)}")
+            print(f"Boot scan: patched expired timers in {os.path.basename(path)}")
 
 boot_scan_all_saves()

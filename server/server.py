@@ -11,28 +11,29 @@ from Commands import handle_hotbar_packet, handle_masterclass_packet, handle_gea
     handle_apply_gearset, handle_update_equipment, handle_private_message, \
     handle_public_chat, handle_group_invite, handle_power_cast, \
     handle_entity_incremental_update, Start_Skill_Research, \
-    handle_research_claim, PaperDoll_Request, Skill_Research_Cancell_Request, Skill_SpeedUp, handle_building_upgrade, \
-    handle_speedup_request, handle_cancel_upgrade, handle_train_talent_point, handle_talent_speedup, \
+    handle_research_claim, PaperDoll_Request, Skill_Research_Cancell_Request, Skill_SpeedUp, \
+    handle_train_talent_point, handle_talent_speedup, \
     handle_talent_claim, handle_clear_talent_research, handle_hp_increase_notice, handle_volume_enter, \
     handle_change_offset_y, handle_start_skit, handle_lockbox_reward, handle_linkupdater, \
     handle_emote_begin, Client_Crash_Reports, handle_mount_equip_packet, handle_pet_info_packet, \
     handle_collect_hatched_egg, handle_talk_to_npc, handle_char_regen, allocate_talent_tree_points, \
-    handle_respec_talent_tree, handle_building_claim, handle_request_armory_gears
-from buildings import magic_forge_packet, start_forge_packet, collect_forge_charm, cancel_forge_packet, \
-    use_forge_xp_consumable, allocate_talent_points
+    handle_respec_talent_tree, handle_request_armory_gears
 from PolicyServer import start_policy_server
+from buildings import magic_forge_packet, start_forge_packet, collect_forge_charm, cancel_forge_packet, \
+    use_forge_xp_consumable, allocate_talent_points, handle_cancel_building_upgrade, handle_building_speed_up_request, \
+    handle_building_upgrade, handle_building_claim
 from combat import handle_entity_destroy, PKTTYPE_BUFF_TICK_DOT, handle_respawn_ack, handle_request_respawn, \
     handle_grant_reward, handle_power_hit, handle_projectile_explode, handle_add_buff, handle_remove_buff, \
     handle_change_max_speed
 from entity import handle_entity_full_update
 from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, extended_sent_map, HOST, \
     PORTS
-from level_config import handle_open_door, handle_level_transfer_request, handle_request_door_state, LEVEL_CONFIG, \
-    SPAWN_POINTS
+from level_config import handle_open_door, handle_level_transfer_request, handle_request_door_state, LEVEL_CONFIG
 from login import handle_login_version, handle_login_create, handle_login_authenticate, handle_login_character_create, \
     handle_character_select, handle_gameserver_login
 from scheduler import set_active_session_resolver
 from static_server import start_static_server
+
 
 def _level_remove(level, session):
     s = level_registry.get(level)
@@ -407,9 +408,9 @@ def handle_client(session: ClientSession):
             # Buildings Upgrade packets
             ############################################
             elif pkt == 0xDB:# Done
-                handle_cancel_upgrade(session, data)
+                handle_cancel_building_upgrade(session, data)
             elif pkt == 0xDC:# Done
-                handle_speedup_request(session, data)
+                handle_building_speed_up_request(session, data)
             elif pkt == 0xD7:# Done
                 handle_building_upgrade(session, data)
             elif pkt == 0xD9:# Done
