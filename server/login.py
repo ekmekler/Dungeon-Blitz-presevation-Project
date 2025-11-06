@@ -7,13 +7,12 @@ import struct
 import time
 
 from Character import load_characters, build_login_character_list_bitpacked, load_class_template, save_characters
-from Commands import ensure_level_npcs
 from WorldEnter import build_enter_world_packet, Player_Data_Packet
 from accounts import get_or_create_user_id, load_accounts, build_popup_packet, _SAVES_DIR, is_character_name_taken
 from ai_logic import AI_ENABLED, ensure_ai_loop, run_ai_loop
 from bitreader import BitReader
 from constants import EntType
-from entity import Send_Entity_Data
+from entity import Send_Entity_Data, ensure_level_npcs
 from globals import SECRET, session_by_token, _level_add, pending_world, current_characters, used_tokens, \
     extended_sent_map, token_char
 from level_config import LEVEL_CONFIG, get_spawn_coordinates

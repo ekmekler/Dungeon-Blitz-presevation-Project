@@ -9,7 +9,7 @@ from Character import save_characters
 from Commands import handle_hotbar_packet, handle_masterclass_packet, handle_gear_packet, \
     handle_apply_dyes, handle_equip_rune, handle_change_look, handle_create_gearset, handle_name_gearset, \
     handle_apply_gearset, handle_update_equipment, handle_private_message, \
-    handle_public_chat, handle_group_invite, handle_power_cast, handle_entity_full_update, \
+    handle_public_chat, handle_group_invite, handle_power_cast, \
     handle_entity_incremental_update, Start_Skill_Research, \
     handle_research_claim, PaperDoll_Request, Skill_Research_Cancell_Request, Skill_SpeedUp, handle_building_upgrade, \
     handle_speedup_request, handle_cancel_upgrade, handle_train_talent_point, handle_talent_speedup, \
@@ -24,6 +24,7 @@ from PolicyServer import start_policy_server
 from combat import handle_entity_destroy, PKTTYPE_BUFF_TICK_DOT, handle_respawn_ack, handle_request_respawn, \
     handle_grant_reward, handle_power_hit, handle_projectile_explode, handle_add_buff, handle_remove_buff, \
     handle_change_max_speed
+from entity import handle_entity_full_update
 from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, extended_sent_map, HOST, \
     PORTS
 from level_config import handle_open_door, handle_level_transfer_request, handle_request_door_state, LEVEL_CONFIG, \

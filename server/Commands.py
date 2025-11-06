@@ -3,20 +3,17 @@ import pprint
 import random
 import secrets
 import time
-import missions
 
-from Character import save_characters, build_paperdoll_packet, load_characters, get_inventory_gears, \
+from Character import save_characters, build_paperdoll_packet, get_inventory_gears, \
     build_level_gears_packet, SAVE_PATH_TEMPLATE
 from bitreader import BitReader
 from constants import GearType, EntType, class_64, class_1, DyeType, class_118, method_277, \
     get_ability_info, load_building_data, find_building_data, class_66, PowerType, Entity, Game,\
-    index_to_node_id, door, class_119
+    index_to_node_id
 from BitBuffer import BitBuffer
 from constants import get_dye_color
-from entity import Send_Entity_Data, load_npc_data_for_level
-from globals import level_npcs, build_start_skit_packet, send_premium_purchase, _send_error, \
+from globals import build_start_skit_packet, send_premium_purchase, _send_error, \
     level_players
-from level_config import DOOR_MAP
 from scheduler import scheduler, _on_research_done_for, schedule_building_upgrade, \
 _on_talent_done_for, schedule_Talent_point_research
 from missions import _MISSION_DEFS_BY_ID
@@ -37,24 +34,6 @@ def handle_request_armory_gears(session, data, conn):
                 print(f"[0xF4] Sent 0xF5 Armory gear list ({len(gears_list)} items)")
     except Exception as e:
         print(f"[0xF4] Error parsing: {e}, raw={payload.hex()}")
-
-def ensure_level_npcs(level_name):
-    """
-    Ensure NPCs for this level are loaded/spawned once.
-    Returns the dict of NPCs for this level.
-    """
-    if level_name not in level_npcs:
-        try:
-            npcs = load_npc_data_for_level(level_name)
-            npc_map = {}
-            for npc in npcs:
-                npc_map[npc["id"]] = npc
-            level_npcs[level_name] = npc_map
-            print(f"[LEVEL] Spawned {len(npc_map)} NPCs for {level_name}")
-        except Exception as e:
-            print(f"[LEVEL] Error loading NPCs for {level_name}: {e}")
-            level_npcs[level_name] = {}
-    return level_npcs[level_name]
 
 #TODO...
 def handle_talk_to_npc(session, data, all_sessions):
@@ -1956,177 +1935,6 @@ def handle_linkupdater(session, data, all_sessions):
 
     except Exception as e:
         print(f"[{session.addr}] [PKTA2] Error parsing link-sync: {e}")
-
-def build_entity_dict(eid, char, props):
-    """
-    Build a dictionary for Send_Entity_Data packet.
-    Works for both joiner (new spawn) and existing entities.
-    """
-    ent_dict = {
-        "id": eid,
-        "name": char.get("name", props.get("ent_name", "")) if char else props.get("ent_name", ""),
-        "is_player": True if char else bool(props.get("is_player", False)),
-        "x": int(props.get("pos_x", 0)),
-        "y": int(props.get("pos_y", 0)),
-        "v": int(props.get("velocity_x", 0)),
-        "team": int(props.get("team", 1)),
-    }
-    if char:
-        ent_dict.update({
-            "class": char.get("class", ""),
-            "gender": char.get("gender", ""),
-            "headSet": char.get("headSet", ""),
-            "hairSet": char.get("hairSet", ""),
-            "mouthSet": char.get("mouthSet", ""),
-            "faceSet": char.get("faceSet", ""),
-            "hairColor": char.get("hairColor", 0),
-            "skinColor": char.get("skinColor", 0),
-            "shirtColor": char.get("shirtColor", 0),
-            "pantColor": char.get("pantColor", 0),
-            "equippedGears": char.get("equippedGears", []),
-            "abilities": char.get("learnedAbilities", []),
-            "level": char.get("level", 1),
-            "Talent_id": char.get("MasterClass", 0),
-            "equippedMount": char.get("equippedMount", 0),
-        })
-
-    return ent_dict
-
-
-def send_existing_entities_to_joiner(joiner, all_sessions):
-    """
-    Send spawn packets (Send_Entity_Data) ONLY for players in the same level
-    to the joining player.
-    NPCs are skipped and should be spawned separately by the level loader.
-    """
-    for other in all_sessions:
-        if other is joiner:
-            continue
-        if not other.world_loaded or other.current_level != joiner.current_level:
-            continue
-
-        # Only send the entity that belongs to the player's character
-        if other.clientEntID and other.clientEntID in other.entities:
-            eprops = other.entities[other.clientEntID]
-
-            char = next((c for c in other.char_list if c.get("name") == other.current_character), None)
-            ent_dict = build_entity_dict(other.clientEntID, char, eprops)
-
-            try:
-                pkt = Send_Entity_Data(ent_dict)
-                framed = struct.pack(">HH", 0x0F, len(pkt)) + pkt
-                joiner.conn.sendall(framed)
-                print(f"[JOIN] Sent player {ent_dict['name']} (eid={other.clientEntID}) → {joiner.addr}")
-            except Exception as ex:
-                print(f"[JOIN] Error sending player {ent_dict['name']} to {joiner.addr}: {ex}")
-
-def handle_entity_full_update(session, data, all_sessions):
-    """
-    Handle a full entity spawn/update (packet type 0x08)
-    - Parses and stores entity info.
-    - Marks player entity IDs.
-    - Sends 0x0F spawn packets so players see each other.
-    - Broadcasts raw 0x08 packets for movement/state sync.
-    """
-    payload = data[4:]
-    br = BitReader(payload, debug=True)
-    try:
-        # ── Parse fields ──
-        entity_id  = br.read_method_9()
-        pos_x      = br.read_method_24()
-        pos_y      = br.read_method_24()
-        velocity_x = br.read_method_24()
-        ent_name   = br.read_method_26()
-
-        team       = br.read_method_20(Entity.TEAM_BITS)
-        is_player  = bool(br.read_method_15())
-        y_offset   = br.read_method_706()
-
-        # Optional cue data
-        has_cue = bool(br.read_method_15())
-        cue_data = {}
-        if has_cue:
-            if bool(br.read_method_15()):
-                cue_data["character_name"] = br.read_method_13()
-            if bool(br.read_method_15()):
-                cue_data["DramaAnim"] = br.read_method_13()
-            if bool(br.read_method_15()):
-                cue_data["SleepAnim"] = br.read_method_13()
-
-        has_summoner = bool(br.read_method_15())
-        summoner_id = br.read_method_9() if has_summoner else None
-
-        has_power = bool(br.read_method_15())
-        power_id  = br.read_method_9() if has_power else None
-
-        ent_state   = br.read_method_20(Entity.const_316)
-        b_left      = bool(br.read_method_15())
-        b_running   = bool(br.read_method_15())
-        b_jumping   = bool(br.read_method_15())
-        b_dropping  = bool(br.read_method_15())
-        b_backpedal = bool(br.read_method_15())
-
-        # Track client’s entity ID
-        if is_player and session.clientEntID is None:
-            session.clientEntID = entity_id
-            print(f"[{session.addr}] [PKT08] Learned clientEntID = {entity_id}")
-
-        # Build props
-        props = {
-            "pos_x": pos_x,
-            "pos_y": pos_y,
-            "velocity_x": velocity_x,
-            "ent_name": ent_name,
-            "team": team,
-            "is_player": is_player,
-            "y_offset": y_offset,
-            "cue_data": cue_data,
-            "summoner_id": summoner_id,
-            "power_id": power_id,
-            "ent_state": ent_state,
-            "b_left": b_left,
-            "b_running": b_running,
-            "b_jumping": b_jumping,
-            "b_dropping": b_dropping,
-            "b_backpedal": b_backpedal,
-        }
-
-        #print(f"[{session.addr}] [PKT08] Parsed entity {entity_id}:")
-        #pprint.pprint(props, indent=4)
-
-        # Update server-side map
-        session.entities[entity_id] = props
-
-        # First-time world load for this player
-        if not session.world_loaded:
-            session.world_loaded = True
-            send_existing_entities_to_joiner(session, all_sessions)
-
-            # Broadcast THIS player’s spawn to others
-            char = next((c for c in session.char_list if c.get("name") == session.current_character), None)
-            if char:
-                ent_dict = build_entity_dict(entity_id, char, props)
-                try:
-                    pkt = Send_Entity_Data(ent_dict)
-                    framed = struct.pack(">HH", 0x0F, len(pkt)) + pkt
-                    for other in all_sessions:
-                        if other is not session and other.world_loaded and other.current_level == session.current_level:
-                            other.conn.sendall(framed)
-                            print(f"[JOIN] Broadcasted Send_Entity_Data for {ent_dict['name']} → {other.addr}")
-                except Exception as e:
-                    print(f"[JOIN] Failed to build/broadcast Send_Entity_Data for new player: {e}")
-
-        # Always forward raw 0x08 packet for movement sync
-        for other in all_sessions:
-            if other is not session and other.world_loaded and other.current_level == session.current_level:
-                other.conn.sendall(data)
-                print(f"[{session.addr}] [PKT08] Broadcasted raw packet to {other.addr}")
-
-    except Exception as e:
-        print(f"[{session.addr}] [PKT08] Error parsing packet: {e}")
-        if br.debug:
-            for log_line in br.get_debug_log():
-                print(log_line)
 
 def handle_entity_incremental_update(session, data, all_sessions):
     payload = data[4:]
