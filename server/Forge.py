@@ -6,6 +6,7 @@ from Character import save_characters
 from Commands import SAVE_PATH_TEMPLATE
 from bitreader import BitReader
 from constants import class_111, class_1_const_254, class_8, class_3
+from globals import send_consumable_update
 from scheduler import scheduler, schedule_forge
 
 
@@ -259,72 +260,49 @@ def cancel_forge_packet(session, data):
     print(f"[{session.addr}] Forge session canceled and save updated")
 
 def use_forge_xp_consumable(session, data):
-    """
-    Handle 0x110: player used a forge‑XP consumable.
-    Deduct one consumable and award forge XP (capped at 159,948).
-    """
     payload = data[4:]
     br = BitReader(payload)
-
-    # Read consumableID
     cid = br.read_method_20(class_3.const_69)
-    print(f"[{session.addr}] Forge XP consumable used: consumableID={cid}")
+    print(f"[{session.addr}] ForgeXP consumable used: cid={cid}")
 
-    # Get character
-    chars = session.player_data.get("characters", [])
-    char = next((c for c in chars if c.get("name") == session.current_character), None)
+    chars = getattr(session, "char_list", [])
+    current_name = getattr(session, "current_character", None)
+    char = next((c for c in chars if c.get("name") == current_name), None)
     if not char:
-        print(f"[{session.addr}] ERROR: character not found")
+        print(f"[{session.addr}] ERROR: character not found (current_character={current_name})")
         return
 
-    # Deduct from inventory
-    cons = char.setdefault("consumables", [])
-    for entry in cons:
-        if entry["consumableID"] == cid:
-            entry["count"] = max(0, entry["count"] - 1)
+    new_count = 0
+    for entry in char.get("consumables", []):
+        if entry.get("consumableID") == cid:
+            entry["count"] = max(0, entry.get("count", 0) - 1)
+            new_count = entry["count"]
             break
-    else:
-        print(f"[{session.addr}] Warning: consumable {cid} not in inventory")
-
-    # Award XP (capped)
-    xp_gain = 4000
-    current_xp = char.get("craftXP", 0)
-    max_xp = 159_948
-    new_xp = min(current_xp + xp_gain, max_xp)
-    char["craftXP"] = new_xp
-
-    print(f"[{session.addr}] Forge XP +{xp_gain} (capped), total now = {char['craftXP']}")
-
-    # Save file
-    save_path = SAVE_PATH_TEMPLATE.format(user_id=session.user_id)
-    with open(save_path, "w", encoding="utf-8") as f:
-        json.dump(session.player_data, f, indent=2)
-    print(f"[{session.addr}] Save updated with capped forge XP")
+    cap = 159_948
+    gain = 4000
+    
+    before = int(char.get("craftXP", 0))
+    char["craftXP"] = min(before + gain, cap)
+    print(f"[{session.addr}] ForgeXP +{gain} -> {char['craftXP']} (cap {cap})")
+    save_characters(session.user_id, session.char_list)
+    send_consumable_update(session.conn, cid, new_count)
 
 def allocate_talent_points(session, data):
-    """
-    Handle 0xD3: client sent new craftTalentPoints.
-    Packet payload is one method_9-packed integer containing
-    five 4-bit values: [p0, p1, p2, p3, p4].
-    """
     payload = data[4:]
     br = BitReader(payload)
     packed = br.read_method_9()
-    # Unpack five 4‑bit fields: index i at bits (i*4 .. i*4+3)
-    points = [(packed >> (i * 4)) & 0xF for i in range(5)]
-    print(f"[{session.addr}] Allocate talent points: {points}")
 
-    # Update save
-    chars = session.player_data.setdefault("characters", [])
-    char = next((c for c in chars if c["name"] == session.current_character), None)
+    points = [(packed >> (i * 4)) & 0xF for i in range(5)]
+    print(f"[{session.addr}] Craft talent allocation: {points}")
+
+    # find active character from session.char_list
+    chars = getattr(session, "char_list", [])
+    current_name = getattr(session, "current_character", None)
+    char = next((c for c in chars if c.get("name") == current_name), None)
     if not char:
-        print(f"[{session.addr}] ERROR: character not found for talent allocation")
+        print(f"[{session.addr}] ERROR: character not found (current_character={current_name})")
         return
 
     char["craftTalentPoints"] = points
-
-    # Persist
-    save_path = SAVE_PATH_TEMPLATE.format(user_id=session.user_id)
-    with open(save_path, "w", encoding="utf-8") as f:
-        json.dump(session.player_data, f, indent=2)
-    print(f"[{session.addr}] Saved new craftTalentPoints for {char['name']}")
+    save_characters(session.user_id, session.char_list)
+    print(f"[{session.addr}] Saved craftTalentPoints for {char['name']}: {points}")
