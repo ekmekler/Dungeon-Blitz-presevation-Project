@@ -192,7 +192,7 @@ def _on_forge_done_for(user_id: str, char_name: str, primary: int, secondary: in
     mf = char["magicForge"]
     mf["hasSession"] = False
     mf["status"]     = class_111.const_264
-    mf["duration"]   = 0
+    mf["ReadyTime"]   = 0
 
     save_characters(user_id, chars)
 
@@ -206,7 +206,7 @@ def _on_forge_done_for(user_id: str, char_name: str, primary: int, secondary: in
                 mem_mf.update({
                     "hasSession": False,
                     "status":    class_111.const_264,
-                    "duration":  0,
+                    "ReadyTime":  0,
                     "var_8":     1 if secondary else 0
                 })
 
@@ -311,23 +311,14 @@ def boot_scan_all_saves():
 
             mf = char.get("magicForge")
             if isinstance(mf, dict) and mf.get("hasSession") and mf.get("status") == class_111.const_286:
-                start_ts = mf.get("_start_time", 0)
-                duration_ms = mf.get("duration", 0)
-                ready_ts = start_ts + (duration_ms // 1000)
+                ready_ts = mf.get("ReadyTime", 0)  # already epoch
                 if ready_ts <= now:
-                    # expired: mark done immediately
+                    # mark completed immediately
                     mf["hasSession"] = False
-                    mf["status"]     = class_111.const_264  # completed
-                    mf["duration"]   = 0
+                    mf["status"] = class_111.const_264
                     dirty = True
                 else:
-                    schedule_forge(
-                        user_id,
-                        char["name"],
-                        ready_ts,
-                        mf.get("primary", 0),
-                        mf.get("secondary", 0)
-                    )
+                    schedule_forge(user_id, char["name"], ready_ts, mf.get("primary", 0), mf.get("secondary", 0))
 
             tr = char.get("talentResearch", {})
             if tr and not tr.get("done", False):

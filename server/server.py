@@ -19,9 +19,10 @@ from Commands import handle_hotbar_packet, handle_masterclass_packet, handle_gea
     handle_collect_hatched_egg, handle_talk_to_npc, handle_char_regen, allocate_talent_tree_points, \
     handle_respec_talent_tree, handle_request_armory_gears
 from PolicyServer import start_policy_server
-from buildings import magic_forge_packet, start_forge_packet, collect_forge_charm, cancel_forge_packet, \
-    use_forge_xp_consumable, allocate_talent_points, handle_cancel_building_upgrade, handle_building_speed_up_request, \
-    handle_building_upgrade, handle_building_claim
+from Forge import magic_forge_packet, start_forge_packet, collect_forge_charm, cancel_forge_packet, \
+    use_forge_xp_consumable, allocate_talent_points
+from buildings import handle_building_claim, handle_building_upgrade, handle_building_speed_up_request, \
+    handle_cancel_building_upgrade
 from combat import handle_entity_destroy, PKTTYPE_BUFF_TICK_DOT, handle_respawn_ack, handle_request_respawn, \
     handle_grant_reward, handle_power_hit, handle_projectile_explode, handle_add_buff, handle_remove_buff, \
     handle_change_max_speed

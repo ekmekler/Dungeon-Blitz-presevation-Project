@@ -316,34 +316,41 @@ NEWS_EVENTS = {
 }
                #Loaders
 ################################################################
+
 def _load_json(path, default=None):
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
+    except (OSError, json.JSONDecodeError) as e:
         print(f"[WARN] Could not load {path}: {e}")
         return default if default is not None else {}
 
-DYE_DATA       = _load_json("data/DyeTypes.json", {})
-ABILITY_DATA   = _load_json(os.path.join(os.path.dirname(__file__), "data/AbilityTypes.json"), [])
-BUILDING_DATA  = _load_json("data/BuildingTypes.json", [])
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+DYE_DATA      = _load_json(os.path.join(DATA_DIR, "DyeTypes.json"), {})
+ABILITY_DATA  = _load_json(os.path.join(DATA_DIR, "AbilityTypes.json"), [])
+BUILDING_DATA = _load_json(os.path.join(DATA_DIR, "BuildingTypes.json"), [])
+CHARM_DB      = {int(c["CharmID"]): c for c in _load_json(os.path.join(DATA_DIR, "Charms.json"), [])}
+CONSUMABLES   = _load_json(os.path.join(DATA_DIR, "ConsumableTypes.json"), [])
+
+CONSUMABLE_BOOSTS = {
+    int(c.get("ConsumableID", 0)): {
+        "RareBoost": int(c.get("RareBoost", 0)),
+        "LegendaryBoost": int(c.get("LegendaryBoost", 0)),
+    }
+    for c in CONSUMABLES
+}
 
 def get_dye_color(dye_id: int | str):
-    dye = DYE_DATA.get(str(dye_id))
-    return dye and dye.get("color")
+    return DYE_DATA.get(str(dye_id), {}).get("color")
 
 def get_ability_info(ability_id: int, rank: int):
+    key, rank = str(ability_id), str(rank)
     for e in ABILITY_DATA:
-        if e.get("AbilityID") == str(ability_id) and e.get("Rank") == str(rank):
+        if e.get("AbilityID") == key and e.get("Rank") == rank:
             return {k: int(e.get(k, 0)) for k in ("AbilityID", "Rank", "GoldCost", "IdolCost", "UpgradeTime")}
     return None
 
 def find_building_data(building_id: int, rank: int):
-    for b in BUILDING_DATA:
-        if int(b.get("BuildingID", -1)) == building_id and int(b.get("Rank", -1)) == rank:
-            return b
-    return None
-
-# Load charm database (used to calculate forge times)
-with open("data/Charms.json", "r", encoding="utf-8") as f:
-    CHARM_DB = {int(c["CharmID"]): c for c in json.load(f)}
+    bid, rank = int(building_id), int(rank)
+    return next((b for b in BUILDING_DATA
+                 if int(b.get("BuildingID", -1)) == bid and int(b.get("Rank", -1)) == rank), None)
