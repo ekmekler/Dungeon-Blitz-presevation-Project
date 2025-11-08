@@ -8,16 +8,27 @@ from BitBuffer import BitBuffer
 from Character import save_characters
 from Commands import SAVE_PATH_TEMPLATE
 from bitreader import BitReader
-from constants import class_111, class_1_const_254, class_8, class_3, find_building_data, class_1, Game, class_64, \
-    CHARM_DB, CONSUMABLE_BOOSTS
+from constants import class_111, class_1_const_254, class_8, class_3, class_1, Game, class_64, \
+    CHARM_DB, CONSUMABLE_BOOSTS, class_86
 from globals import send_consumable_update, send_premium_purchase
-from scheduler import scheduler, schedule_forge, schedule_building_upgrade
+from scheduler import scheduler, schedule_forge
+
+"""
+craftTalentPoints layout:
+  [0] = Crafting time reduction
+  [1] = Rare / Legendary chance
+  [2] = Bonus material efficiency
+  [3] = Material yield
+  [4] = Craft XP gain speed
+"""
+
+def get_forge_level_from_xp(xp: int) -> int:
+    for i, threshold in enumerate(class_86.FORGE_XP_THRESHOLDS[1:], start=1):
+        if xp < threshold:
+            return i
+    return 50
 
 def get_charm_size(primary_id: int) -> int:
-    """
-    Return the CharmSize (1–10) from Charms.json.
-    Defaults to 1 if not found or invalid.
-    """
     try:
         entry = CHARM_DB.get(int(primary_id))
         if not entry:
@@ -29,17 +40,8 @@ def get_charm_size(primary_id: int) -> int:
         return 1
 
 def get_craft_time_bonus_percent(char: dict) -> float:
-    """
-    craftTalentPoints layout:
-      [0] = Crafting time reduction
-      [1] = Rare / Legendary chance
-      [2] = Bonus material efficiency
-      [3] = Material yield
-      [4] = Craft XP gain speed
-    """
     base_bonus = 5.0          # default base reduction %
     per_point_bonus = 0.5     # each point in slot 0 adds faster time
-
     points = char.get("craftTalentPoints", [])
     if not points or not isinstance(points, list):
         return base_bonus
@@ -66,11 +68,6 @@ def compute_forge_duration_seconds(char: dict, primary_id: int, forge_flags: dic
     return int(result)
 
 def pick_secondary_rune(primary_id: int, consumable_flags: list[bool], char: dict | None = None) -> tuple[int, int]:
-    """
-    Determines (secondary_id, var_8) based on consumable boosts + craft XP.
-      secondary_id ∈ [1..9]
-      var_8: 0 = none, 1 = rare, 2 = legendary
-    """
     # Base chance for any secondary
     chance_any = 25.0  # 25%
 
@@ -109,14 +106,10 @@ def pick_secondary_rune(primary_id: int, consumable_flags: list[bool], char: dic
     return secondary_id, var_8
 
 def start_forge_packet(session, data):
-    payload = data[4:]
-    br = BitReader(payload)
-
-    # Primary charm ID
+    br = BitReader(data[4:])
     primary = br.read_method_20(class_1.const_254)
     print(f"[{session.addr}] Forge start: primary charmID={primary}")
 
-    # Materials (ID + count)
     materials_used = {}
     while br.read_method_15():
         mat_id = br.read_method_20(class_8.const_658)
@@ -124,17 +117,14 @@ def start_forge_packet(session, data):
         materials_used[mat_id] = materials_used.get(mat_id, 0) + cnt
     print(f"[{session.addr}] Forge materials: {materials_used}")
 
-    # Four consumable flags
     consumable_flags = [br.read_method_15() for _ in range(4)]
     print(f"[{session.addr}] Forge consumables flags: {consumable_flags}")
 
-    # Get active character
     char = next((c for c in session.char_list if c.get("name") == session.current_character), None)
     if not char:
         print(f"[{session.addr}] ERROR: character not found for forge start")
         return
 
-    # Deduct materials
     mats = char.setdefault("materials", [])
     for mat_id, used in materials_used.items():
         for entry in mats:
@@ -144,145 +134,150 @@ def start_forge_packet(session, data):
         else:
             mats.append({"materialID": mat_id, "count": 0})
 
-    # Deduct consumables
     cons_ids = [class_3.var_1415, class_3.var_2082, class_3.var_1374, class_3.var_1462]
     cons = char.setdefault("consumables", [])
+
     for flag, cid in zip(consumable_flags, cons_ids):
         if not flag:
             continue
+        new_count = 0
         for entry in cons:
             if entry["consumableID"] == cid:
                 entry["count"] = max(0, int(entry.get("count", 0)) - 1)
+                new_count = entry["count"]
                 break
         else:
             cons.append({"consumableID": cid, "count": 0})
+        send_consumable_update(session.conn, cid, new_count)
 
-    # Special 91-ID long craft flag (var_2434)
     forge_flags = {"var_2434": (primary == class_1.const_405)}
 
-    # Duration and ready timestamp
     duration_sec = compute_forge_duration_seconds(char, primary, forge_flags)
     now_ts = int(time.time())
-    end_ts = now_ts + duration_sec  # ReadyTime will be stored as absolute epoch seconds
-
-    # Secondary rune
+    end_ts = now_ts + duration_sec
     secondary, var_8 = pick_secondary_rune(primary, consumable_flags, char)
-
 
     mf = char.setdefault("magicForge", {})
     mf.update({
         "hasSession": True,
         "primary": primary,
         "secondary": secondary,
-        "status": class_111.const_286,  # in-progress
+        "status": class_111.const_286,  # in progress
         "ReadyTime": end_ts,
         "var_8": var_8,
         "usedlist": 0,
         "var_2675": 0,
         "var_2316": 0,
-        "var_2434": bool(forge_flags.get("var_2434", False))
+        "var_2434": bool(forge_flags.get("var_2434", False)),
     })
     save_characters(session.user_id, session.char_list)
     schedule_forge(session.user_id, session.current_character, end_ts, primary, secondary)
     print(
         f"[{session.addr}] Forge started → ReadyTime={end_ts} "
-        f"({duration_sec}s from now), primary={primary}, secondary={secondary}, var_8={var_8}"
+        f"({duration_sec}s), primary={primary}, secondary={secondary}, var_8={var_8}"
     )
 
-def magic_forge_packet(session, data):
-    payload = data[4:]
-    br = BitReader(payload)
+def forge_speed_up_packet(session, data):
+    br = BitReader(data[4:])
     idols_to_spend = br.read_method_9()
-    print(f"[{session.addr}] Speed‑up request: spend {idols_to_spend} idols")
-
-    chars = session.player_data.get("characters", [])
-    char = next((c for c in chars if c.get("name") == session.current_character), None)
-    if char is None:
-        print(f"[{session.addr}] Character {session.current_character} not found")
+    print(f"[{session.addr}] Forge speed-up: spend {idols_to_spend} idols")
+    char = next((c for c in session.player_data.get("characters", [])
+                 if c.get("name") == session.current_character), None)
+    if not char:
+        print(f"[{session.addr}] Error: active character not found")
         return
 
-    mf        = char.setdefault("magicForge", {})
-    available = char.get("mammothIdols", 0)
+    mf = char.setdefault("magicForge", {})
+    if not mf.get("hasSession") or mf.get("status") != class_111.const_286:
+        print(f"[{session.addr}] No active forge session to speed-up")
+        return
 
-    # ONLY check hasSession (i.e. an upgrade in progress), not status==1
-    if mf.get("hasSession") and available >= idols_to_spend:
-        # 1) Deduct idols
-        char["mammothIdols"] = available - idols_to_spend
+    char["mammothIdols"] = max(0, int(char.get("mammothIdols", 0)) - idols_to_spend)
+    send_premium_purchase(session, "Forge Speed-Up", idols_to_spend)
 
-        # 2) Cancel the scheduled completion, if any
-        sched_id = mf.get("schedule_id")
-        if sched_id is not None:
-            try:
-                scheduler.cancel(sched_id)
-                print(f"[{session.addr}] Canceled scheduled forge completion (id={sched_id})")
-            except Exception as e:
-                print(f"[{session.addr}] Failed to cancel scheduler id={sched_id}: {e}")
+    if "schedule_id" in mf:
+        try:
+            scheduler.cancel(mf["schedule_id"])
+            print(f"[{session.addr}] Canceled forge schedule id={mf['schedule_id']}")
+        except Exception:
+            pass
         mf.pop("schedule_id", None)
 
-        # 3) Mark forge as completed via speed‑up
-        mf["status"]   = class_111.const_264  # completed via speed‑up
-        mf["ReadyTime"] = 0
-        mf["hasSession"] = False
+    mf.update({
+        "status": class_111.const_264,   # completed
+        "hasSession": True,              # still waiting to collect
+        "ReadyTime": 0
+    })
 
-        # 4) Persist save
-        save_path = SAVE_PATH_TEMPLATE.format(user_id=session.user_id)
-        with open(save_path, "w", encoding="utf-8") as f:
-            json.dump(session.player_data, f, indent=2)
+    # Ensure secondary exists (some forges might not have rolled yet)
+    primary = mf.get("primary", 0)
+    var_8   = mf.get("var_8", 0)
+    secondary = mf.get("secondary", 0)
+    usedlist = mf.get("usedlist", 0)
+    if not var_8 or not secondary:
+        sec, rarity = pick_secondary_rune(primary, [False] * 4, char)
+        mf["secondary"], mf["var_8"] = sec, rarity
+        secondary, var_8 = sec, rarity
 
-        # 5) Build & send the 0xCD “forge update” response
-        bb = BitBuffer()
-        bb.write_method_6(mf.get("primary", 0), class_1_const_254)
-        bb.write_method_91(mf.get("var_2675", 0))
-        bb.write_method_91(mf.get("var_2316", 0))
-        bb.write_method_11(0, 1)  # no secondary/usedlist
+    with open(SAVE_PATH_TEMPLATE.format(user_id=session.user_id), "w", encoding="utf-8") as f:
+        json.dump(session.player_data, f, indent=2)
 
-        resp_payload = bb.to_bytes()
-        resp = struct.pack(">HH", 0xCD, len(resp_payload)) + resp_payload
-        session.conn.sendall(resp)
-        print(f"[{session.addr}] Sent 0xCD forge‑update (speed‑up applied)")
+    bb = BitBuffer()
+    bb.write_method_6(primary, class_1_const_254)
+    bb.write_method_91(int(mf.get("var_2675", 0)))
+    bb.write_method_91(int(mf.get("var_2316", 0)))
+    bb.write_method_6(var_8, class_64.const_499)
+    if var_8:
+        bb.write_method_6(secondary, class_64.const_218)
+        bb.write_method_6(usedlist, class_111.const_432)
 
-    else:
-        print(f"[{session.addr}] Speed‑up denied: hasSession={mf.get('hasSession')}, idols={available}")
+    pkt = struct.pack(">HH", 0xCD, len(bb.to_bytes())) + bb.to_bytes()
+    session.conn.sendall(pkt)
 
-#TODO... for every collect the forge should gain level XP
+#TODO: the xp after collecting the charm is not correct
 def collect_forge_charm(session, data):
-    """
-    Handle 0xD0 "collect charm" from client:
-    - Grant the player the charm they just forged (computed full ID)
-    - Clear out the forge session
-    - Persist save
-    - Reply with an empty 0xD0 ack
-    """
-    chars = session.player_data.get("characters", [])
-    char = next((c for c in chars if c.get("name") == session.current_character), None)
-    if char is None:
+    char = next((c for c in session.player_data.get("characters", [])
+                 if c.get("name") == session.current_character), None)
+    if not char:
         print(f"[{session.addr}] Character {session.current_character} not found")
         return
 
     mf = char.get("magicForge", {})
-    if not mf.get("hasSession", False):
-        print(f"[{session.addr}] No active forge session to collect")
+    if not (mf.get("hasSession") and mf.get("status") == class_111.const_264):
+        print(f"[{session.addr}] No completed forge to collect")
         return
 
-    # Compute full charm ID
-    primary = mf.get("primary", 0)
-    secondary = mf.get("secondary", 0)
-    var_8 = mf.get("var_8", 0)
-    charm_id = (primary & 0x1FF) | ((secondary & 0x1F) << 9) | ((var_8 & 0x3) << 14)
+    primary   = int(mf.get("primary", 0))
+    secondary = int(mf.get("secondary", 0))
+    var_8     = int(mf.get("var_8", 0))
+    charm_id  = (primary & 0x1FF) | ((secondary & 0x1F) << 9) | ((var_8 & 0x3) << 14)
 
-    if primary <= 0:
-        print(f"[{session.addr}] Invalid primary ID: {primary}")
+    charms = char.setdefault("charms", [])
+    for entry in charms:
+        if entry.get("charmID") == charm_id:
+            entry["count"] = entry.get("count", 0) + 1
+            break
     else:
-        charms = char.setdefault("charms", [])
-        for entry in charms:
-            if entry.get("charmID") == charm_id:
-                entry["count"] = entry.get("count", 0) + 1
-                break
-        else:
-            charms.append({"charmID": charm_id, "count": 1})
-        print(f"[{session.addr}] Granted charmID={charm_id}. New charms: {char['charms']}")
+        charms.append({"charmID": charm_id, "count": 1})
 
-    # Clear forge session
+    if primary not in (class_1.const_405, class_1.const_459):
+        size = get_charm_size(primary)
+        base_xp = class_8.const_1119[size - 1]
+
+        bonus_points = 0
+        ctp = char.get("craftTalentPoints", [0, 0, 0, 0, 0])
+        if len(ctp) >= 5:
+            bonus_points = ctp[4]
+        xp_gain = math.ceil(base_xp * (1 + bonus_points * 0.01))
+
+        old_xp = int(char.get("craftXP", 0))
+        new_xp = old_xp + xp_gain
+        new_level = get_forge_level_from_xp(new_xp)
+
+        char["craftXP"] = new_xp
+        char["craftLevel"] = new_level
+        print(f"[{session.addr}] Forge XP +{xp_gain} (→ {new_xp}), Level={new_level}")
+
     mf.update({
         "hasSession": False,
         "primary": 0,
@@ -293,35 +288,17 @@ def collect_forge_charm(session, data):
         "usedlist": 0,
         "var_2675": 0,
         "var_2316": 0,
-        "var_2434": False
+        "var_2434": False,
     })
-
-    # Save file
-    save_path = SAVE_PATH_TEMPLATE.format(user_id=session.user_id)
-    with open(save_path, "w", encoding="utf-8") as f:
+    with open(SAVE_PATH_TEMPLATE.format(user_id=session.user_id), "w", encoding="utf-8") as f:
         json.dump(session.player_data, f, indent=2)
-    print(f"[{session.addr}] Forge session cleared and saved")
-
-    # Reply with 0xD0 ACK
-    resp = struct.pack(">HH", 0xD0, 0)
-    session.conn.sendall(resp)
-    print(f"[{session.addr}] Sent 0xD0 collect-ack")
 
 def cancel_forge_packet(session, data):
-    """
-    Handle 0xE1: client clicked Cancel on the Magic Forge.
-    Clears the session so the UI resets.
-    """
-    print(f"[{session.addr}] Cancel‑forge request received")
-
-    # 1) Find the character in the save
     chars = session.player_data.get("characters", [])
     char = next((c for c in chars if c["name"] == session.current_character), None)
     if char is None:
         print(f"[{session.addr}] ERROR: character not found for cancel forge")
         return
-
-    # 2) Clear the forge session (no gem, no secondary, no timer)
     mf = char.setdefault("magicForge", {})
     mf["hasSession"] = False
     mf["status"]     = 0
@@ -333,18 +310,14 @@ def cancel_forge_packet(session, data):
     mf["var_2675"]   = 0
     mf["var_2316"]   = 0
     mf["var_2434"]   = False
-
-    # 3) Persist the change
     save_path = SAVE_PATH_TEMPLATE.format(user_id=session.user_id)
     with open(save_path, "w", encoding="utf-8") as f:
         json.dump(session.player_data, f, indent=2)
-    print(f"[{session.addr}] Forge session canceled and save updated")
 
 def use_forge_xp_consumable(session, data):
     payload = data[4:]
     br = BitReader(payload)
     cid = br.read_method_20(class_3.const_69)
-    print(f"[{session.addr}] ForgeXP consumable used: cid={cid}")
 
     chars = getattr(session, "char_list", [])
     current_name = getattr(session, "current_character", None)
@@ -364,7 +337,6 @@ def use_forge_xp_consumable(session, data):
     
     before = int(char.get("craftXP", 0))
     char["craftXP"] = min(before + gain, cap)
-    print(f"[{session.addr}] ForgeXP +{gain} -> {char['craftXP']} (cap {cap})")
     save_characters(session.user_id, session.char_list)
     send_consumable_update(session.conn, cid, new_count)
 
@@ -374,9 +346,6 @@ def allocate_talent_points(session, data):
     packed = br.read_method_9()
 
     points = [(packed >> (i * 4)) & 0xF for i in range(5)]
-    print(f"[{session.addr}] Craft talent allocation: {points}")
-
-    # find active character from session.char_list
     chars = getattr(session, "char_list", [])
     current_name = getattr(session, "current_character", None)
     char = next((c for c in chars if c.get("name") == current_name), None)
@@ -386,4 +355,3 @@ def allocate_talent_points(session, data):
 
     char["craftTalentPoints"] = points
     save_characters(session.user_id, session.char_list)
-    print(f"[{session.addr}] Saved craftTalentPoints for {char['name']}: {points}")
