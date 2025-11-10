@@ -234,7 +234,6 @@ def forge_speed_up_packet(session, data):
     pkt = struct.pack(">HH", 0xCD, len(bb.to_bytes())) + bb.to_bytes()
     session.conn.sendall(pkt)
 
-#TODO: the xp after collecting the charm is not correct
 def collect_forge_charm(session, data):
     char = next((c for c in session.player_data.get("characters", [])
                  if c.get("name") == session.current_character), None)
@@ -267,8 +266,8 @@ def collect_forge_charm(session, data):
         bonus_points = 0
         ctp = char.get("craftTalentPoints", [0, 0, 0, 0, 0])
         if len(ctp) >= 5:
-            bonus_points = ctp[4]
-        xp_gain = math.ceil(base_xp * (1 + bonus_points * 0.01))
+            bonus_points = ctp[4]  # Coals: craft XP gain speed
+        xp_gain = math.ceil(base_xp * (1 + bonus_points * class_8.CRAFT_XP_MULTIPLIER))
 
         old_xp = int(char.get("craftXP", 0))
         new_xp = old_xp + xp_gain
