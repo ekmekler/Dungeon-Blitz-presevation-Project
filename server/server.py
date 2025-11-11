@@ -212,13 +212,13 @@ def handle_client(session: ClientSession):
 
             #Login Screen
             ############################################
-            if pkt == 0x11:# Done
+            if pkt == 0x11:
                 handle_login_version(session, data, conn)
-            elif pkt == 0x19:# Done
+            elif pkt == 0x19:
                 PaperDoll_Request(session, data, conn)
-            elif pkt == 0x13:  # Done
+            elif pkt == 0x13:
                 handle_login_create(session, data, conn)
-            elif pkt == 0x14:  # Done
+            elif pkt == 0x14:
                 handle_login_authenticate(session, data, conn)
             elif pkt == 0x17:
                 handle_login_character_create(session, data, conn)
@@ -242,35 +242,35 @@ def handle_client(session: ClientSession):
 
             #Entity Update Related packets
             ###################################
-            elif pkt == 0x07:# Done
+            elif pkt == 0x07:
                 handle_entity_incremental_update(session, data, all_sessions)
-            elif pkt == 0xA2:# Done
+            elif pkt == 0xA2:
                 handle_linkupdater(session, data, all_sessions)
-            elif pkt == 0x09:# Done
+            elif pkt == 0x09:
                 handle_power_cast(session, data, all_sessions)
-            elif pkt == 0x08:  # Done
+            elif pkt == 0x08:
                 handle_entity_full_update(session, data, all_sessions)
             ###################################
 
               # Combat Related packets
             ############################################
-            elif pkt == 0x0D: # Done
+            elif pkt == 0x0D:
                handle_entity_destroy(session, data, all_sessions)
-            elif pkt == 0x79: # Done
+            elif pkt == 0x79:
                PKTTYPE_BUFF_TICK_DOT(session, data, all_sessions)
-            elif pkt == 0x82: # Done
+            elif pkt == 0x82:
                handle_respawn_ack(session, data, all_sessions)
-            elif pkt == 0x77:# Done
+            elif pkt == 0x77:
                 handle_request_respawn(session, data, all_sessions)
             elif pkt == 0x2A:
                 handle_grant_reward(session, data, all_sessions)
-            elif pkt == 0x0A:# Done
+            elif pkt == 0x0A:
                 handle_power_hit(session, data, all_sessions)
-            elif pkt == 0x0E:# Done
+            elif pkt == 0x0E:
                 handle_projectile_explode(session, data, all_sessions)
-            elif pkt == 0x0B:# Done
+            elif pkt == 0x0B:
                 handle_add_buff(session, data, all_sessions)
-            elif pkt == 0x0C:# Done
+            elif pkt == 0x0C:
                 handle_remove_buff(session, data, all_sessions)
             elif pkt == 0x8A:
                 handle_change_max_speed(session, data, all_sessions)
@@ -278,13 +278,13 @@ def handle_client(session: ClientSession):
 
             #Chatting messages NPC talking Emotes etc...
             ############################################
-            elif pkt == 0x2C:# Done
+            elif pkt == 0x2C:
                 handle_public_chat(session, data, all_sessions)
-            elif pkt == 0xC5:# Done
+            elif pkt == 0xC5:
                 handle_start_skit(session, data,all_sessions)
-            elif pkt == 0x46:# Done
+            elif pkt == 0x46:
                 handle_private_message(session, data, all_sessions)
-            elif pkt == 0x7E:# Done
+            elif pkt == 0x7E:
                handle_emote_begin(session, data, all_sessions)
             elif pkt == 0x113:
                 #handle_alert_update(session, data)
@@ -296,38 +296,38 @@ def handle_client(session: ClientSession):
 
             # Group Related packets
             ############################################
-            elif pkt == 0x65:# Done
+            elif pkt == 0x65:
                 handle_group_invite(session, data, all_sessions)
             ############################################
 
             # Skill Related packets
             ############################################
-            elif pkt == 0xBD:# Done
+            elif pkt == 0xBD:
                 handle_hotbar_packet(session, data)  # Equipped skills
-            elif pkt == 0xBE:# Done
+            elif pkt == 0xBE:
                 Start_Skill_Research(session, data, conn)
-            elif pkt == 0xD1:# Done
+            elif pkt == 0xD1:
                 handle_research_claim(session)
-            elif pkt == 0xDD:# Done
+            elif pkt == 0xDD:
                 Skill_Research_Cancell_Request(session)
-            elif pkt == 0xDE:# Done
+            elif pkt == 0xDE:
                 Skill_SpeedUp(session, data)
             ############################################
 
             # Entity Visuals related packets
             ############################################
-            elif pkt == 0x8E:# Done
+            elif pkt == 0x8E:
                 handle_change_look(session, data, all_sessions)
-            elif pkt == 0xBA:# Done
+            elif pkt == 0xBA:
                 payload = data[4:]
                 handle_apply_dyes(session, payload, all_sessions)
             ############################################
 
            # Barn and pets related packets
             ############################################
-            elif pkt == 0xB2:# Done
+            elif pkt == 0xB2:
                 handle_mount_equip_packet(session, data, all_sessions)
-            elif pkt == 0xB3:# Done
+            elif pkt == 0xB3:
                 handle_pet_info_packet(session, data, all_sessions)
             elif pkt == 0xEA:
                 handle_collect_hatched_egg(session, data)
@@ -335,21 +335,21 @@ def handle_client(session: ClientSession):
 
             # Gear Set Related Packets
             ############################################
-            elif pkt == 0xC8:# Done
+            elif pkt == 0xC8:
                 handle_name_gearset(session, data)
-            elif pkt == 0xC7:# Done
+            elif pkt == 0xC7:
                 handle_create_gearset(session, data)
-            elif pkt == 0xC6:# Done
+            elif pkt == 0xC6:
                 handle_apply_gearset(session, data)
             ############################################
 
             # Gear Related packets
             ############################################
-            elif pkt == 0xB0:# Done
+            elif pkt == 0xB0:
                 handle_equip_rune(session, data)
-            elif pkt == 0x31:# Done
+            elif pkt == 0x31:
                 handle_gear_packet(session, data)
-            elif pkt == 0x30:# Done
+            elif pkt == 0x30:
                 handle_update_equipment(session, data)
             elif pkt == 0xF4:
                 handle_request_armory_gears(session, data, conn)
@@ -373,17 +373,17 @@ def handle_client(session: ClientSession):
             ############################################
 
             ############################################
-            elif pkt == 0xD2 :# Done
+            elif pkt == 0xD2:
                 handle_respec_talent_tree(session, data)
-            elif pkt == 0xC0:# Done
+            elif pkt == 0xC0:
                 allocate_talent_tree_points(session,data)
-            elif pkt == 0xD6:# Done
+            elif pkt == 0xD6:
                 handle_talent_claim(session, data)
-            elif pkt == 0xE0:# Done
+            elif pkt == 0xE0:
                 handle_talent_speedup(session, data)
-            elif pkt == 0xD4:# Done
+            elif pkt == 0xD4:
                 handle_train_talent_point(session, data)
-            elif pkt == 0xDF:# Done
+            elif pkt == 0xDF:
                 handle_clear_talent_research(session, data)
             ############################################
 
@@ -396,7 +396,7 @@ def handle_client(session: ClientSession):
 
             # Master class related packets
             ############################################
-            elif pkt == 0xC3:# Done
+            elif pkt == 0xC3:
                 handle_masterclass_packet(session, data)
             ############################################
 
@@ -408,13 +408,13 @@ def handle_client(session: ClientSession):
 
             # Buildings Upgrade packets
             ############################################
-            elif pkt == 0xDB:# Done
+            elif pkt == 0xDB:
                 handle_cancel_building_upgrade(session, data)
-            elif pkt == 0xDC:# Done
+            elif pkt == 0xDC:
                 handle_building_speed_up_request(session, data)
-            elif pkt == 0xD7:# Done
+            elif pkt == 0xD7:
                 handle_building_upgrade(session, data)
-            elif pkt == 0xD9:# Done
+            elif pkt == 0xD9:
                 handle_building_claim(session, data)
             ############################################
 
