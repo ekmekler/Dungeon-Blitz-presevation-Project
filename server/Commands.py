@@ -1825,46 +1825,28 @@ def handle_start_skit(session, data, all_sessions):
     else:
         print(f"[{session.addr}] [PKT0xC5] Skit flag is False for entity {entity_id}, message suppressed")
 
-def handle_hotbar_packet(session, raw_data):
-    payload = raw_data[4:]
-    reader = BitReader(payload)
+def handle_equip_skills(session, raw_data):
+    reader = BitReader(raw_data[4:])
+    updates = {i - 1: reader.read_method_20(7)
+               for i in range(1, 9) if reader.remaining_bits() >= 1 and reader.read_method_20(1)}
 
-    slot = 1
-    updates = {}   # slot_index (0‑based) -> new skill_id
-    while reader.remaining_bits() >= 1:
-        changed = reader.read_method_20(1)
-        if changed:
-            skill_id = reader.read_method_20(7)
-            updates[slot - 1] = skill_id
-        slot += 1
-
-    print(f"[Hotbar] Player {session.user_id} updates → {updates}")
-
-    # 2) Locate the right character in the save
-    for char in session.char_list:
-        if char.get("name") == session.current_character:
-            # 3) Fetch existing list, or default to zeros
-            active = char.get("activeAbilities", [])
-            # ensure it's long enough
-            max_idx = max(updates.keys(), default=-1)
-            while len(active) <= max_idx:
-                active.append(0)
-
-            # 4) Apply updates in‑place
-            for idx, skill_id in updates.items():
-                active[idx] = skill_id
-
-            # 5) Store back
-            char["activeAbilities"] = active
-            break
-    else:
+    char = next((c for c in session.char_list if c.get("name") == session.current_character), None)
+    if not char:
         print(f"[WARNING] Character {session.current_character} not found in save!")
         return
 
-    # 6) Persist full JSON
+    active = char.get("activeAbilities", [])
+    if updates:
+        max_idx = max(updates)
+        if len(active) <= max_idx:
+            active.extend([0] * (max_idx + 1 - len(active)))
+
+        for idx, skill_id in updates.items():
+            active[idx] = skill_id
+
+    char["activeAbilities"] = active
     session.player_data["characters"] = session.char_list
     save_characters(session.user_id, session.char_list)
-    print(f"[Save] activeAbilities for {session.current_character} = {active} saved (user_id={session.user_id})")
 
 def handle_respec_talent_tree(session, data):
     """

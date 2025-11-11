@@ -6,7 +6,7 @@ import threading
 import time
 
 from Character import save_characters
-from Commands import handle_hotbar_packet, handle_masterclass_packet, handle_gear_packet, \
+from Commands import handle_equip_skills, handle_masterclass_packet, handle_gear_packet, \
     handle_apply_dyes, handle_equip_rune, handle_change_look, handle_create_gearset, handle_name_gearset, \
     handle_apply_gearset, handle_update_equipment, handle_private_message, \
     handle_public_chat, handle_group_invite, handle_power_cast, \
@@ -303,7 +303,7 @@ def handle_client(session: ClientSession):
             # Skill Related packets
             ############################################
             elif pkt == 0xBD:
-                handle_hotbar_packet(session, data)  # Equipped skills
+                handle_equip_skills(session, data)
             elif pkt == 0xBE:
                 Start_Skill_Research(session, data, conn)
             elif pkt == 0xD1:
