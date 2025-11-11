@@ -324,9 +324,7 @@ def collect_forge_charm(session, data):
 
         old_xp = int(char.get("craftXP", 0))
         new_xp = old_xp + xp_gain
-        new_level = get_forge_level_from_xp(new_xp)
         char["craftXP"] = new_xp
-        char["craftLevel"] = new_level
 
     mf.update({
         "hasSession": False,
