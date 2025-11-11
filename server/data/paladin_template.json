@@ -8854,11 +8854,11 @@
         "secondary": 0,
         "status": 0,
         "ReadyTime": 0,
-        "var_8": 0,
+        "secondary_tier": 0,
         "usedlist": 0,
-        "var_2675": 0,
-        "var_2316": 0,
-        "var_2434": false
+        "forge_roll_a": 0,
+        "forge_roll_b": 0,
+        "is_extended_forge": false
     },
     "SkillResearch": {
         "abilityID": 0,

@@ -155,7 +155,7 @@ class class_10:
     const_105 = 10
 
 class class_8:
-    const_1018 = [1,2,3,4,5,7,10,13,16,20]
+    FORGE_REROLL_COSTS = [1, 2, 3, 4, 5, 7, 10, 13, 16, 20] # const_1018
     const_1299 = 0.01
     const_658 = 7
     const_731 = 7
@@ -366,3 +366,10 @@ def find_building_data(building_id: int, rank: int):
     bid, rank = int(building_id), int(rank)
     return next((b for b in BUILDING_DATA
                  if int(b.get("BuildingID", -1)) == bid and int(b.get("Rank", -1)) == rank), None)
+
+MATERIALS_DATA = {
+    int(m["MaterialID"]): m
+    for m in _load_json(os.path.join(DATA_DIR, "Materials.json"), [])
+}
+
+

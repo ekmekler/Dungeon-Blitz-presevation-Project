@@ -1,6 +1,7 @@
 import glob
 import json
 import os
+import random
 import threading
 import time
 import heapq
@@ -193,6 +194,8 @@ def _on_forge_done_for(user_id: str, char_name: str, primary: int, secondary: in
     mf["hasSession"] = False
     mf["status"]     = class_111.const_264
     mf["ReadyTime"]   = 0
+    mf["forge_roll_a"] = random.randint(0, 65535)
+    mf["forge_roll_b"] = random.randint(0, 65535)
 
     save_characters(user_id, chars)
 
@@ -207,7 +210,7 @@ def _on_forge_done_for(user_id: str, char_name: str, primary: int, secondary: in
                     "hasSession": False,
                     "status":    class_111.const_264,
                     "ReadyTime":  0,
-                    "var_8":     1 if secondary else 0
+                    "secondary_tier":     1 if secondary else 0
                 })
 
             try:

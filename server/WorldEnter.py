@@ -391,16 +391,16 @@ def Player_Data_Packet(char: dict,
                 buf.write_method_4(mf.get("ReadyTime", 0))
             else:
                 buf.write_method_11(0, 1)
-                var_8 = mf.get("var_8", 0)
+                var_8 = mf.get("secondary_tier", 0)
                 buf.write_method_6(var_8, class_64_const_499)
                 if var_8:
                     buf.write_method_6(mf.get("secondary", 0), class_64_const_218)
                     buf.write_method_6(mf.get("usedlist", 0), class_111_const_432)
 
             # 2c) Always send these two when a session exists
-            buf.write_method_91(min(mf.get("var_2675", 0), 65535))
-            buf.write_method_91(min(mf.get("var_2316", 0), 65535))
-        buf.write_method_11(1 if mf.get("var_2434", False) else 0, 1)
+            buf.write_method_91(min(mf.get("forge_roll_a", 0), 65535))
+            buf.write_method_91(min(mf.get("forge_roll_b", 0), 65535))
+        buf.write_method_11(1 if mf.get("is_extended_forge", False) else 0, 1)
 
         # ──────────────(Skill Research)──────────────
         research = char.get("SkillResearch")
