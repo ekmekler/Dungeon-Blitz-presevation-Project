@@ -492,28 +492,25 @@ def Player_Data_Packet(char: dict,
         buf.write_method_6(0, 1)
 
     # ──────────────(MasterClass)──────────────
-    selected = str(char.get("MasterClass", 0))
-    talent_tree = char.get("TalentTree", {}).get(str(selected), {"nodes": [None] * 27})
+    selected = int(char.get("MasterClass", 0) or 0)
+    buf.write_method_6(selected, GAME_CONST_209)
 
-    buf.write_method_6(int(selected), GAME_CONST_209)
-    buf.write_method_11(1, 1)
-
-    nodes = talent_tree.get("nodes", [None] * NUM_TALENT_SLOTS)
-
-    for i in range(NUM_TALENT_SLOTS):
-        node = nodes[i] or {"filled": False, "points": 0, "nodeID": i + 1}
-        if node.get("filled", False):
-            buf.write_method_11(1, 1)
-
-            # === NODE INDEX FIRST ===
-            node_id = node.get("nodeID", i + 1)
-            buf.write_method_6(node_id, CLASS_118_CONST_127)
-
-            # === POINTS-MINUS-ONE SECOND ===
-            bits = SLOT_BIT_WIDTHS[i]
-            buf.write_method_6(node["points"] - 1, bits)
-        else:
-            buf.write_method_11(0, 1)
+    if selected > 0:
+        buf.write_method_11(1, 1)
+        talent_tree = char.get("TalentTree", {}).get(str(selected), {"nodes": [None] * NUM_TALENT_SLOTS})
+        nodes = talent_tree.get("nodes", [None] * NUM_TALENT_SLOTS)
+        for i in range(NUM_TALENT_SLOTS):
+            node = nodes[i] or {"filled": False, "points": 0, "nodeID": i + 1}
+            if node.get("filled", False):
+                buf.write_method_11(1, 1)
+                node_id = node.get("nodeID", i + 1)
+                buf.write_method_6(node_id, CLASS_118_CONST_127)
+                bits = SLOT_BIT_WIDTHS[i]
+                buf.write_method_6(node["points"] - 1, bits)
+            else:
+                buf.write_method_11(0, 1)
+    else:
+        buf.write_method_11(0, 1)
 
     # ──────────────(Equipped Gears)──────────────
     equip = char.get("equippedGears", [])
