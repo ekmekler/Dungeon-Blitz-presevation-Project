@@ -10,6 +10,7 @@ import struct
 from BitBuffer import BitBuffer
 from Character import save_characters, load_characters, CHAR_SAVE_DIR
 from constants import class_111, class_64_const_218, class_1
+from globals import send_skill_complete_packet
 
 active_session_resolver = None
 
@@ -104,11 +105,7 @@ def _on_research_done_for(user_id: str, char_name: str):
             if mem_char and "SkillResearch" in mem_char:
                 mem_char["SkillResearch"]["done"] = True
             try:
-                bb = BitBuffer()
-                bb.write_method_6(research["abilityID"], 7)
-                payload = bb.to_bytes()
-                session.conn.sendall(struct.pack(">HH", 0xbf, len(payload)) + payload)
-                print(f"[{session.addr}] Sent research-complete (0xbf) abilityID={research['abilityID']}")
+                send_skill_complete_packet(session, research["abilityID"])
             except Exception as e:
                 print(f"[Scheduler] notify failed: {e}")
 

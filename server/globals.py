@@ -25,6 +25,14 @@ def _level_add(level, session):
 # Helpers
 #############################################
 
+def send_skill_complete_packet(session, ability_id: int):
+    """Send 0xBF Ability Research Complete packet."""
+    bb = BitBuffer()
+    bb.write_method_6(ability_id, 7)
+    payload = bb.to_bytes()
+    session.conn.sendall(struct.pack(">HH", 0xBF, len(payload)) + payload)
+    print(f"[{session.addr}] Sent 0xBF complete for abilityID={ability_id}")
+
 # updates players consumables inventory when a  consumable is used
 def send_consumable_update(conn, consumable_id: int, new_count: int):
     bb = BitBuffer()
