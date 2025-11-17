@@ -10,7 +10,7 @@ import struct
 from BitBuffer import BitBuffer
 from Character import save_characters, load_characters, CHAR_SAVE_DIR
 from constants import class_111, class_64_const_218, class_1
-from globals import send_skill_complete_packet, send_building_complete_packet
+from globals import send_skill_complete_packet, send_building_complete_packet, send_forge_reroll_packet
 
 active_session_resolver = None
 
@@ -177,45 +177,47 @@ def schedule_building_upgrade(user_id: str, char_name: str, ready_ts: int):
     return handle
 
 def _on_forge_done_for(user_id: str, char_name: str, primary: int, secondary: int):
-    # 1) Load persistent data
     chars = load_characters(user_id)
     char = next((c for c in chars if c.get("name") == char_name), None)
     if not char or "magicForge" not in char:
         return
+
     mf = char["magicForge"]
-    mf["hasSession"] = False
-    mf["status"]     = class_111.const_264
-    mf["ReadyTime"]   = 0
-    mf["forge_roll_a"] = random.randint(0, 65535)
-    mf["forge_roll_b"] = random.randint(0, 65535)
-
+    forge_roll_a = random.randint(0, 65535)
+    forge_roll_b = random.randint(0, 65535)
+    tier = 1 if secondary else 0
+    usedlist = mf.get("usedlist", 0)
+    mf.update({
+        "hasSession": False,
+        "status": class_111.const_264,
+        "ReadyTime": 0,
+        "forge_roll_a": forge_roll_a,
+        "forge_roll_b": forge_roll_b,
+        "secondary": secondary,
+        "secondary_tier": tier,
+        "usedlist": usedlist
+    })
     save_characters(user_id, chars)
-
     if active_session_resolver:
         session = active_session_resolver(user_id, char_name)
         if session and session.authenticated:
-            # Mirror into live session
+
             mem_char = next((c for c in session.char_list if c.get("name") == char_name), None)
             if mem_char:
                 mem_mf = mem_char.setdefault("magicForge", {})
-                mem_mf.update({
-                    "hasSession": False,
-                    "status":    class_111.const_264,
-                    "ReadyTime":  0,
-                    "secondary_tier":     1 if secondary else 0
-                })
+                mem_mf.update(mf)
 
-            try:
-                bb = BitBuffer()
-                bb.write_method_6(primary,   class_1.const_254)
-                bb.write_method_11(1 if secondary else 0, 1)
-                if secondary:
-                    bb.write_method_6(secondary, class_64_const_218)
-                payload = bb.to_bytes()
-                session.conn.sendall(struct.pack(">HH", 0xCD, len(payload)) + payload)
-                print(f"[{session.addr}] Sent forge-complete packet")
-            except Exception as e:
-                print(f"[Scheduler] forge notify failed: {e}")
+            send_forge_reroll_packet(
+                session=session,
+                primary=primary,
+                roll_a=forge_roll_a,
+                roll_b=forge_roll_b,
+                tier=tier,
+                secondary=secondary,
+                usedlist=usedlist,
+                action="charm craft complete"
+            )
+            print(f"[{session.addr}] Sent forge-complete packet → primary={primary}, secondary={secondary}, tier={tier}")
 
 def schedule_forge(user_id: str, char_name: str, run_at: int, primary: int, secondary: int):
     scheduler.schedule(

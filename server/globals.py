@@ -1,4 +1,7 @@
-from constants import class_3
+import struct
+
+from BitBuffer import BitBuffer
+from constants import class_3, class_1, class_64, class_111
 
 HOST = "127.0.0.1"
 PORTS = [8080]# Developer mode Port : 7498
@@ -89,14 +92,7 @@ def _send_error(conn, msg):
     payload = struct.pack(">H", len(encoded)) + encoded
     conn.sendall(struct.pack(">HH", 0x44, len(payload)) + payload)
 
-# globals.py (add near bottom)
-import struct
-from BitBuffer import BitBuffer
-
 def build_destroy_entity_packet(entity_id: int, is_player: bool = True) -> bytes:
-    """
-    Build the 0x0D 'Entity Destroy' packet.
-    """
     bb = BitBuffer()
     bb.write_method_4(entity_id)
     bb.write_method_15(is_player)
@@ -104,9 +100,6 @@ def build_destroy_entity_packet(entity_id: int, is_player: bool = True) -> bytes
     return struct.pack(">HH", 0x0D, len(payload)) + payload
 
 def handle_entity_destroy_server(session, entity_id: int, is_player: bool, all_sessions: list):
-    """
-    Server-side broadcast and cleanup for entity destruction.
-    """
     if session.entities.pop(entity_id, None) is None:
         print(f"[WARN] Tried to destroy unknown entity {entity_id}")
 
@@ -119,3 +112,37 @@ def handle_entity_destroy_server(session, entity_id: int, is_player: bool, all_s
                 pass
 
     print(f"[EntityDestroy] Entity {entity_id} destroyed (is_player={is_player}) in level {session.current_level}")
+
+def send_forge_reroll_packet(
+    session,
+    primary,
+    roll_a,
+    roll_b,
+    tier,
+    secondary,
+    usedlist,
+    action="reroll"
+):
+    bb = BitBuffer()
+
+    # Primary charm info
+    bb.write_method_6(primary, class_1.const_254)
+
+    # forge_roll_a & forge_roll_b
+    bb.write_method_91(int(roll_a))
+    bb.write_method_91(int(roll_b))
+
+    # Tier (secondary_tier)
+    bb.write_method_6(tier, class_64.const_499)
+
+    if tier:
+        bb.write_method_6(secondary, class_64.const_218)
+        bb.write_method_6(usedlist, class_111.const_432)
+
+    payload = bb.to_bytes()
+    pkt = struct.pack(">HH", 0xCD, len(payload)) + payload
+    session.conn.sendall(pkt)
+
+    print(f"[Forge] Sent {action} packet → primary={primary}, tier={tier}, secondary={secondary}, usedlist={usedlist}")
+
+

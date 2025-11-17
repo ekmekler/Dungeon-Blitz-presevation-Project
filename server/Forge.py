@@ -1,16 +1,14 @@
 import json
 import math
 import random
-import struct
 import time
 
-from BitBuffer import BitBuffer
 from Character import save_characters
 from Commands import SAVE_PATH_TEMPLATE
 from bitreader import BitReader
-from constants import class_111, class_1_const_254, class_8, class_3, class_1, Game, class_64, \
+from constants import class_111, class_8, class_3, class_1, Game, class_64, \
     CHARM_DB, CONSUMABLE_BOOSTS, class_86, MATERIALS_DATA
-from globals import send_consumable_update, send_premium_purchase
+from globals import send_consumable_update, send_premium_purchase, send_forge_reroll_packet
 from scheduler import scheduler, schedule_forge
 
 # Hints
@@ -251,15 +249,21 @@ def handle_start_forge(session, data):
 def handle_forge_speed_up_packet(session, data):
     br = BitReader(data[4:])
     idols_to_spend = br.read_method_9()
-    char = next((c for c in session.player_data.get("characters", [])if c.get("name") == session.current_character), None)
+
+    char = next((c for c in session.player_data.get("characters", [])
+                 if c.get("name") == session.current_character), None)
 
     mf = char.setdefault("magicForge", {})
+
     if not mf.get("hasSession") or mf.get("status") != class_111.const_286:
         print(f"[{session.addr}] No active forge session to speed-up")
         return
 
+
     char["mammothIdols"] = max(0, int(char.get("mammothIdols", 0)) - idols_to_spend)
     send_premium_purchase(session, "Forge Speed-Up", idols_to_spend)
+
+    # Cancel scheduled completion if exists
     if "schedule_id" in mf:
         try:
             scheduler.cancel(mf["schedule_id"])
@@ -267,9 +271,10 @@ def handle_forge_speed_up_packet(session, data):
             pass
         mf.pop("schedule_id", None)
 
+
     mf.update({
-        "status": class_111.const_264,   # completed
-        "hasSession": True,              # waiting to collect
+        "status": class_111.const_264,
+        "hasSession": True,
         "ReadyTime": 0,
         "forge_roll_a": random.randint(0, 65535),
         "forge_roll_b": random.randint(0, 65535),
@@ -280,20 +285,21 @@ def handle_forge_speed_up_packet(session, data):
     secondary = mf.get("secondary", 0)
     usedlist  = mf.get("usedlist", 0)
 
+    # Save
     with open(SAVE_PATH_TEMPLATE.format(user_id=session.user_id), "w", encoding="utf-8") as f:
         json.dump(session.player_data, f, indent=2)
 
-    bb = BitBuffer()
-    bb.write_method_6(primary, class_1_const_254)
-    bb.write_method_91(int(mf["forge_roll_a"]))
-    bb.write_method_91(int(mf["forge_roll_b"]))
-    bb.write_method_6(var_8, class_64.const_499)
-    if var_8:
-        bb.write_method_6(secondary, class_64.const_218)
-        bb.write_method_6(usedlist, class_111.const_432)
-
-    pkt = struct.pack(">HH", 0xCD, len(bb.to_bytes())) + bb.to_bytes()
-    session.conn.sendall(pkt)
+    # Send forge result packet (0xCD)
+    send_forge_reroll_packet(
+        session=session,
+        primary=primary,
+        roll_a=mf["forge_roll_a"],
+        roll_b=mf["forge_roll_b"],
+        tier=var_8,
+        secondary=secondary,
+        usedlist=usedlist,
+        action="speedup"
+    )
 
 def handle_collect_forge_charm(session, data):
     char = next((c for c in session.player_data.get("characters", [])if c.get("name") == session.current_character), None)
@@ -436,13 +442,13 @@ def handle_magic_forge_reroll(session, data):
     with open(save_path, "w", encoding="utf-8") as f:
         json.dump(session.player_data, f, indent=2)
 
-    bb = BitBuffer()
-    bb.write_method_6(primary, class_1_const_254)
-    bb.write_method_91(int(mf.get("forge_roll_a", 0)))
-    bb.write_method_91(int(mf.get("forge_roll_b", 0)))
-    bb.write_method_6(new_tier, class_64.const_499)
-    bb.write_method_6(new_secondary, class_64.const_218)
-    bb.write_method_6(new_usedlist, class_111.const_432)
-
-    payload = bb.to_bytes()
-    session.conn.sendall(struct.pack(">HH", 0xCD, len(payload)) + payload)
+    send_forge_reroll_packet(
+        session=session,
+        primary=primary,
+        roll_a=mf.get("forge_roll_a", 0),
+        roll_b=mf.get("forge_roll_b", 0),
+        tier=new_tier,
+        secondary=new_secondary,
+        usedlist=new_usedlist,
+        action="reroll"
+    )
