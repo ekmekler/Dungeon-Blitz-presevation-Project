@@ -10,7 +10,8 @@ import struct
 from BitBuffer import BitBuffer
 from Character import save_characters, load_characters, CHAR_SAVE_DIR
 from constants import class_111, class_64_const_218, class_1
-from globals import send_skill_complete_packet, send_building_complete_packet, send_forge_reroll_packet
+from globals import send_skill_complete_packet, send_building_complete_packet, send_forge_reroll_packet, \
+    send_talent_point_research_complete
 
 active_session_resolver = None
 
@@ -250,15 +251,8 @@ def _on_talent_done_for(user_id: str, char_name: str):
     if mem_char:
         mem_char["talentResearch"] = tr.copy()
 
-    try:
-        bb = BitBuffer()
-        bb.write_method_6(tr.get("classIndex"), 2)
-        bb.write_method_6(1, 1)                     # status = complete
-        payload = bb.to_bytes()
-        session.conn.sendall(struct.pack(">HH", 0xD5, len(payload)) + payload)
-        print(f"[{session.addr}] Sent 0xD5 research complete for classIndex={tr.get('classIndex')}")
-    except Exception as e:
-        print(f"[Scheduler] talent notify failed: {e}")
+    send_talent_point_research_complete(session, tr.get("classIndex"))
+    print(f"[{session.addr}] Sent 0xD5 research complete for classIndex={tr.get('classIndex')}")
 
 def schedule_Talent_point_research(user_id: str, char_name: str, run_at: int):
     handle = scheduler.schedule(

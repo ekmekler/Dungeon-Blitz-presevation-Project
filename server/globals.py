@@ -1,7 +1,7 @@
 import struct
 
 from BitBuffer import BitBuffer
-from constants import class_3, class_1, class_64, class_111
+from constants import class_3, class_1, class_64, class_111, class_66
 
 HOST = "127.0.0.1"
 PORTS = [8080]# Developer mode Port : 7498
@@ -27,6 +27,17 @@ def _level_add(level, session):
 
 # Helpers
 #############################################
+
+def get_active_character_name(session) -> str:
+    return session.current_character or "<unknown>"
+
+def send_talent_point_research_complete(session, class_index: int):
+    bb = BitBuffer()
+    bb.write_method_6(class_index, class_66.const_571)  # 2 bits
+    bb.write_method_6(1, 1)  # status = 1 (complete)
+    payload = bb.to_bytes()
+    packet = struct.pack(">HH", 0xD5, len(payload)) + payload
+    session.conn.sendall(packet)
 
 def send_building_complete_packet(session, building_id: int, rank: int):
     bb = BitBuffer()

@@ -5,8 +5,7 @@ import secrets
 from Character import save_characters, build_paperdoll_packet, get_inventory_gears, \
     build_level_gears_packet, SAVE_PATH_TEMPLATE
 from bitreader import BitReader
-from constants import GearType, EntType, class_64, class_1, DyeType, class_118, method_277, \
-    PowerType, Entity, Game
+from constants import GearType, EntType, class_64, class_1, DyeType, PowerType, Entity
 from BitBuffer import BitBuffer
 from constants import get_dye_color
 from globals import build_start_skit_packet, send_premium_purchase, _send_error, \
@@ -208,73 +207,6 @@ def handle_lockbox_reward(session):
     session.conn.sendall(packet)
 
     print(f"Lockbox reward: idx={idx}, name={name}, needs_str={needs_str}")
-
-def send_talent_tree_packet(session, entity_id):
-    """
-    Sends the talent tree for the player's current MasterClass.
-    Uses the new 27-slot array structure.
-    """
-    mc = None
-    nodes = [None] * class_118.NUM_TALENT_SLOTS
-
-    for char in session.char_list:
-        if char.get("name") == session.current_character:
-            mc = char.get("MasterClass", 1)
-            tree = char.get("TalentTree", {}).get(str(mc), {})
-            nodes = tree.get("nodes", [None] * class_118.NUM_TALENT_SLOTS)
-            break
-    else:
-        return  # no matching character
-
-    session.player_data["characters"] = session.char_list
-
-    # Build the packet
-    bb = BitBuffer()
-    bb.write_method_4(entity_id)
-
-    for i, slot in enumerate(nodes):
-        slot = slot or {"filled": False, "points": 0, "nodeID": i + 1}
-
-        if slot.get("filled", False):
-            bb.write_method_6(1, 1)  # has this node
-            node_id = slot.get("nodeID", i + 1)
-            bb.write_method_6(node_id, class_118.const_127)  # send nodeIdx (1-based)
-            width = method_277(i)
-            bb.write_method_6(slot["points"] - 1, width)  # points minus one
-        else:
-            bb.write_method_6(0, 1)  # no node present
-
-    payload = bb.to_bytes()
-    pkt = struct.pack(">HH", 0xC1, len(payload)) + payload
-    session.conn.sendall(pkt)
-    print(f"[Reply 0xC1] TalentTree for class {mc}, total slots: {len(nodes)}")
-
-def handle_masterclass_packet(session, raw_data):
-    payload = raw_data[4:]
-    br = BitReader(payload)
-    entity_id       = br.read_method_4()
-    master_class_id = br.read_method_6(Game.const_209)
-    print(f"[MasterClass] Player {session.user_id} → classID={master_class_id}")
-
-    for char in session.char_list:
-        if char.get("name") == session.current_character:
-            char["MasterClass"] = master_class_id
-            break
-    else:
-        return
-
-    session.player_data["characters"] = session.char_list
-    save_characters(session.user_id, session.char_list)
-
-    bb = BitBuffer()
-    bb.write_method_4(entity_id)
-    bb.write_method_6(master_class_id, Game.const_209)
-    resp = struct.pack(">HH", 0xC3, len(bb.to_bytes())) + bb.to_bytes()
-    session.conn.sendall(resp)
-    print(f"[Reply 0xC3] entity={entity_id}, class={master_class_id}")
-
-    send_talent_tree_packet(session, entity_id)
-
 
 def handle_gear_packet(session, raw_data):
     payload = raw_data[4:]
