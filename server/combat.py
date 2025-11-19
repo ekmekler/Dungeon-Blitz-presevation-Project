@@ -40,31 +40,26 @@ def get_base_hp_for_level(level):
 
         # game client function handlers
        #####################################
+
 def handle_entity_destroy(session, data, all_sessions):
-    payload = data[4:]
-    br = BitReader(payload, debug=False)
-    try:
-        entity_id = br.read_method_9()
-    except Exception as e:
-        print(f"[{session.addr}] [PKT0D] Parse error: {e}, raw={payload.hex()}")
-        return
+    br = BitReader(data[4:])
+    entity_id = br.read_method_9()
 
-    if entity_id in session.entities:
-        del session.entities[entity_id]
+    # Remove the entity from this session's view
+    session.entities.pop(entity_id, None)
 
+    # If this was the client’s own entity, clear reference
     if session.clientEntID == entity_id:
         session.clientEntID = None
 
+    # Broadcast unchanged packet to other players in same level
     for other in all_sessions:
-        if (other is not session
+        if (
+            other is not session
             and other.world_loaded
-            and other.current_level == session.current_level):
-            try:
-                other.conn.sendall(data)
-                print(f"[{session.addr}] [PKT0D] Broadcasted destroy to {other.addr}")
-            except Exception as e:
-                print(f"[{session.addr}] [PKT0D] Error sending to {other.addr}: {e}")
-
+            and other.current_level == session.current_level
+        ):
+            other.conn.sendall(data)
 
 def handle_buff_tick_dot(session, data, all_sessions):
     br = BitReader(data[4:])
@@ -72,6 +67,7 @@ def handle_buff_tick_dot(session, data, all_sessions):
     source_id = br.read_method_9()
     power_type_id = br.read_method_9()
     amount = br.read_method_24()
+    
     # Broadcast unchanged packet to other players in same level
     for other in all_sessions:
         if (
