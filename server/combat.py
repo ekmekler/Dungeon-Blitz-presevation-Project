@@ -267,6 +267,7 @@ def handle_change_max_speed(session, data, all_sessions):
         ):
             other.conn.sendall(data)
 
+#TODO... this is just for testing
 def handle_grant_reward(session, data, all_sessions):
     payload = data[4:]
     br = BitReader(payload, debug=True)
