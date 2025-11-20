@@ -180,54 +180,53 @@ def handle_projectile_explode(session, data, all_sessions):
             and other.current_level == session.current_level
         ):
             other.conn.sendall(data)
-
+# TODO:
+#   Buffs are currently not stored or simulated server-side.
+#   The client fully handles buff logic, but it STILL depends on the
+#   server to send buff removal events.
+#
+#   For server-spawned entities :
+#       - Without server-side buff tracking,
+#         buffs applied by players become permanent.
+#       - The server must eventually track:
+#           • buff start time
+#           • buff duration
+#           • stack count
+#           • modifier nodes (powerNodeTypeID + modValues)
+#           • unique sequence IDs
+#
+#   In the future, server must store these values to correctly
+#   handle timed buff removal and expiration logic.
 def handle_add_buff(session, data, all_sessions):
-    payload = data[4:]
-    br = BitReader(payload, debug=False)
-    try:
-        entity_id  = br.read_method_9()
-        param2     = br.read_method_9()
-        param3     = br.read_method_9()
-        param5     = br.read_method_9()   # note: client writes param5 _before_ param4
-        param4     = br.read_method_9()
-        param6     = br.read_method_9()
+    br = BitReader(data[4:])
+    entity_id    = br.read_method_9()
+    caster_id    = br.read_method_9()
+    buff_type_id = br.read_method_9()
+    duration     = br.read_method_9()
+    stack_count  = br.read_method_9()
+    sequence_id  = br.read_method_9()
+    has_modifier_nodes = br.read_method_15()
 
-        has_vector = bool(br.read_method_15())
-        vector     = []
-        if has_vector:
-            length = br.read_method_9()
-            for _ in range(length):
-                power_node_type_id = br.read_method_9()
-                mod_count          = br.read_method_9()
-                mods               = [br.read_method_560() for _ in range(mod_count)]
-                vector.append({
-                    'power_node_type_id': power_node_type_id,
-                    'mod_values':         mods
-                })
+    if has_modifier_nodes:
+        node_count = br.read_method_9()
 
-        props = {
-            'entity_id': entity_id,
-            'param2':     param2,
-            'param3':     param3,
-            'param4':     param4,
-            'param5':     param5,
-            'param6':     param6,
-            'vector':     vector if has_vector else None
-        }
-        #print(f"[{session.addr}] [PKT0B] Parsed add-buff:")
-        #pprint.pprint(props, indent=4)
+        for _ in range(node_count):
+            power_node_type_id = br.read_method_9()
+            mod_value_count    = br.read_method_9()
 
-        for other in all_sessions:
-            if (other is not session
-                and other.world_loaded
-                and other.current_level == session.current_level):
-                other.conn.sendall(data)
+            mod_values = []
+            for _ in range(mod_value_count):
+                mod_value = br.read_method_560()
+                mod_values.append(mod_value)
 
-    except Exception as e:
-        print(f"[{session.addr}] [PKT0B] Error parsing add-buff: {e}, raw={payload.hex()}")
-        if br.debug:
-            for line in br.get_debug_log():
-                print(line)
+    # Broadcast unchanged packet to other clients in same level
+    for other in all_sessions:
+        if (
+            other is not session
+            and other.world_loaded
+            and other.current_level == session.current_level
+        ):
+            other.conn.sendall(data)
 
 def handle_remove_buff(session, data, all_sessions):
     payload = data[4:]
