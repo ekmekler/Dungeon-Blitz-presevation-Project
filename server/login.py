@@ -18,27 +18,28 @@ from globals import SECRET, session_by_token, _level_add, pending_world, current
 from level_config import LEVEL_CONFIG, get_spawn_coordinates
 
 def handle_login_version(session, data, conn):
-    try:
-        br = BitReader(data[4:], debug=True)
-        client_version = br.read_method_9()
-    except Exception as e:
-        print(f"[{session.addr}] [0x11] Failed to parse login version: {e}, raw={data.hex()}")
-        return
+    br = BitReader(data[4:])
+    client_version = br.read_method_9()
+
     if client_version != 100:
         print(f"[{session.addr}] Unsupported client version: {client_version}")
-    else:
-        print(f"[{session.addr}] Client version OK: {client_version}")
+        return
+
+    print(f"[{session.addr}] Client version OK: {client_version}")
+
     sid = secrets.randbelow(1 << 16)
     sid_bytes = sid.to_bytes(2, "big")
     digest = hashlib.md5(sid_bytes + SECRET).hexdigest()[:12]
-    sid_hex = f"{sid:04x}"
-    challenge_str = sid_hex + digest  # 16 hex characters
-    session.challenge_str = challenge_str
-    utf_bytes = challenge_str.encode("utf-8")
+
+    challenge = f"{sid:04x}{digest}"
+    session.challenge_str = challenge
+
+    utf_bytes = challenge.encode("utf-8")
     payload = struct.pack(">H", len(utf_bytes)) + utf_bytes
-    response = struct.pack(">HH", 0x12, len(payload)) + payload
-    conn.sendall(response)
-    print(f"[{session.addr}] → Sent 0x12 login challenge sid={sid_hex} hash={digest}")
+    pkt = struct.pack(">HH", 0x12, len(payload)) + payload
+
+    conn.sendall(pkt)
+    print(f"[{session.addr}] → Sent 0x12 login challenge sid={sid:04x} hash={digest}")
 
 def handle_login_create(session, data, conn):
     payload = data[4:]
