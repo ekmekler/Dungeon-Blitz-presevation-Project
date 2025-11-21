@@ -176,65 +176,63 @@ def handle_login_character_create(session, data, conn):
 
 def handle_character_select(session, data, conn):
     br = BitReader(data[4:])
-    try:
-        name = br.read_method_26()
-    except Exception as e:
-        print(f"[{session.addr}] [0x16] Error reading character name: {e}, raw={data.hex()}")
-        return
+    name = br.read_method_26()
 
     for c in session.char_list:
-        if c["name"] == name:
-            session.current_character = name
-            session.current_char_dict = c
-            current_level = c.get("CurrentLevel", {}).get("name", "CraftTown")
-            prev_level = c.get("PreviousLevel", {}).get("name", "NewbieRoad")
-            session.current_level = current_level
+        if c["name"] != name:
+            continue
 
-            # Issue token
-            tk = session.ensure_token(c, target_level=current_level, previous_level=prev_level)
-            session.clientEntID = tk
-            session_by_token[tk] = session
-            _level_add(current_level, session)
+        session.current_character = name
+        session.current_char_dict = c
 
-            level_config = LEVEL_CONFIG.get(
-                current_level, ("LevelsNR.swf/a_Level_NewbieRoad", 1, 1, False)
-            )
-            is_hard = current_level.endswith("Hard")
-            new_moment = "Hard" if is_hard else ""
-            new_alter = "Hard" if is_hard else ""
+        current_level = c.get("CurrentLevel", {}).get("name", "CraftTown")
+        prev_level = c.get("PreviousLevel", {}).get("name", "NewbieRoad")
+        session.current_level = current_level
 
-            pkt_out = build_enter_world_packet(
-                transfer_token=tk,
-                old_level_id=0,
-                old_swf="",
-                has_old_coord=False,
-                old_x=0,
-                old_y=0,
-                host="127.0.0.1",
-                port=8080,
-                new_level_swf=level_config[0],
-                new_map_lvl=level_config[1],
-                new_base_lvl=level_config[2],
-                new_internal=current_level,
-                new_moment=new_moment,
-                new_alter=new_alter,
-                new_is_dungeon=level_config[3],
-                new_has_coord=False,
-                new_x=0,
-                new_y=0,
-                char=c,
-            )
-            conn.sendall(pkt_out)
-            pending_world[tk] = (c, current_level, prev_level)
+        tk = session.ensure_token(c, target_level=current_level, previous_level=prev_level)
+        session.clientEntID = tk
+        session_by_token[tk] = session
+        _level_add(current_level, session)
 
-            # Save the updated player_data format
-            session.player_data["characters"] = session.char_list
-            save_path = os.path.join(_SAVES_DIR, f"{session.user_id}.json")
-            with open(save_path, "w", encoding="utf-8") as f:
-                json.dump(session.player_data, f, indent=2)
+        level_config = LEVEL_CONFIG.get(
+            current_level, ("LevelsNR.swf/a_Level_NewbieRoad", 1, 1, False)
+        )
 
-            print(f"[{session.addr}] [0x16] Transfer begin: {name}, tk={tk}, level={current_level}")
-            break
+        is_hard = current_level.endswith("Hard")
+        new_moment = "Hard" if is_hard else ""
+        new_alter = "Hard" if is_hard else ""
+
+        pkt = build_enter_world_packet(
+            transfer_token=tk,
+            old_level_id=0,
+            old_swf="",
+            has_old_coord=False,
+            old_x=0,
+            old_y=0,
+            host="127.0.0.1",
+            port=8080,
+            new_level_swf=level_config[0],
+            new_map_lvl=level_config[1],
+            new_base_lvl=level_config[2],
+            new_internal=current_level,
+            new_moment=new_moment,
+            new_alter=new_alter,
+            new_is_dungeon=level_config[3],
+            new_has_coord=False,
+            new_x=0,
+            new_y=0,
+            char=c,
+        )
+
+        conn.sendall(pkt)
+        pending_world[tk] = (c, current_level, prev_level)
+
+        session.player_data["characters"] = session.char_list
+        save_path = os.path.join(_SAVES_DIR, f"{session.user_id}.json")
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(session.player_data, f, indent=2)
+
+        print(f"[{session.addr}] [0x16] Transfer begin: {name}, tk={tk}, level={current_level}")
 
 def handle_gameserver_login(session, data, conn):
     token = int.from_bytes(data[4:], 'big')
