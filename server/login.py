@@ -42,22 +42,20 @@ def handle_login_version(session, data, conn):
     print(f"[{session.addr}] → Sent 0x12 login challenge sid={sid:04x} hash={digest}")
 
 def handle_login_create(session, data, conn):
-    payload = data[4:]
-    try:
-        br = BitReader(payload, debug=True)
-        client_facebook_id = br.read_method_26()
-        client_kongregate_id = br.read_method_26()
-        email = br.read_method_26().strip().lower()
-        password = br.read_method_26()
-        legacy_auth_key = br.read_method_26()
-    except Exception as e:
-        print(f"[{session.addr}] [0x13] Failed to parse login-create: {e}, raw={data.hex()}")
-        return
+    br = BitReader(data[4:])
+    client_facebook_id = br.read_method_26()
+    client_kongregate_id = br.read_method_26()
+    email = br.read_method_26().strip().lower()
+    password = br.read_method_26()
+    legacy_auth_key = br.read_method_26()
+
     session.user_id = get_or_create_user_id(email)
     session.authenticated = True
     session.char_list = load_characters(session.user_id)
-    packet = build_login_character_list_bitpacked(session.char_list)
-    conn.sendall(packet)
+
+    pkt = build_login_character_list_bitpacked(session.char_list)
+    conn.sendall(pkt)
+
     print(f"[{session.addr}] [0x13] Login/Create OK for {email} → {len(session.char_list)} characters")
 
 def handle_login_authenticate(session, data, conn):
