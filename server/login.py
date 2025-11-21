@@ -92,33 +92,28 @@ def handle_login_authenticate(session, data, conn):
 
     print(f"[{session.addr}] [0x14] Login success for {email} → user_id={user_id}, {len(session.char_list)} chars")
 
-
 def handle_login_character_create(session, data, conn):
     br = BitReader(data[4:])
-    try:
-        name = br.read_method_26()
-        class_name = br.read_method_26()
-        gender = br.read_method_26()
-        head = br.read_method_26()
-        hair = br.read_method_26()
-        mouth = br.read_method_26()
-        face = br.read_method_26()
-        hair_color = br.read_method_20(EntType.CHAR_COLOR_BITSTOSEND)
-        skin_color = br.read_method_20(EntType.CHAR_COLOR_BITSTOSEND)
-        shirt_color = br.read_method_20(EntType.CHAR_COLOR_BITSTOSEND)
-        pant_color = br.read_method_20(EntType.CHAR_COLOR_BITSTOSEND)
-    except Exception as e:
-        print(f"[{session.addr}] [0x17] Failed to parse create-char: {e}, raw={data.hex()}")
-        return
+    name = br.read_method_26()
+    class_name = br.read_method_26()
+    gender = br.read_method_26()
+    head = br.read_method_26()
+    hair = br.read_method_26()
+    mouth = br.read_method_26()
+    face = br.read_method_26()
+    hair_color = br.read_method_20(EntType.CHAR_COLOR_BITSTOSEND)
+    skin_color = br.read_method_20(EntType.CHAR_COLOR_BITSTOSEND)
+    shirt_color = br.read_method_20(EntType.CHAR_COLOR_BITSTOSEND)
+    pant_color = br.read_method_20(EntType.CHAR_COLOR_BITSTOSEND)
 
     if is_character_name_taken(name):
         conn.sendall(build_popup_packet(
             "Character name is unavailable. Please choose a new name.",
-            disconnect=False))
+            disconnect=False
+        ))
         print(f"[{session.addr}] [0x17] Name taken: {name}")
         return
 
-    # --- build new character ---
     base_template = load_class_template(class_name)
     new_char = copy.deepcopy(base_template)
     new_char.update({
@@ -135,9 +130,9 @@ def handle_login_character_create(session, data, conn):
         "pantColor": pant_color,
     })
 
-    # --- append + save ---
     session.char_list.append(new_char)
     session.player_data["characters"] = session.char_list
+
     save_path = os.path.join(_SAVES_DIR, f"{session.user_id}.json")
     with open(save_path, "w", encoding="utf-8") as f:
         json.dump(session.player_data, f, indent=2)
@@ -151,7 +146,8 @@ def handle_login_character_create(session, data, conn):
     _level_add(current_level, session)
 
     level_config = LEVEL_CONFIG.get(current_level, ("LevelsNR.swf/a_Level_NewbieRoad", 1, 1, False))
-    pkt_out = build_enter_world_packet(
+
+    pkt = build_enter_world_packet(
         transfer_token=tk,
         old_level_id=0,
         old_swf="",
@@ -173,8 +169,9 @@ def handle_login_character_create(session, data, conn):
         char=new_char,
     )
 
-    conn.sendall(pkt_out)
+    conn.sendall(pkt)
     pending_world[tk] = (new_char, current_level, prev_level)
+
     print(f"[{session.addr}] [0x17] Character '{name}' created → entering {current_level} (tk={tk})")
 
 def handle_character_select(session, data, conn):
