@@ -8,8 +8,7 @@ from bitreader import BitReader
 from constants import GearType, EntType, class_64, class_1, DyeType, Entity
 from BitBuffer import BitBuffer
 from constants import get_dye_color
-from globals import build_start_skit_packet, send_premium_purchase, _send_error, \
-    level_players
+from globals import build_start_skit_packet, send_premium_purchase, _send_error
 
 
 def handle_request_armory_gears(session, data, conn):
@@ -1213,70 +1212,6 @@ def handle_linkupdater(session, data, all_sessions):
 
     except Exception as e:
         print(f"[{session.addr}] [PKTA2] Error parsing link-sync: {e}")
-
-def handle_entity_incremental_update(session, data, all_sessions):
-    payload = data[4:]
-    br = BitReader(payload)
-
-    try:
-        entity_id = br.read_method_4()
-        is_self = (entity_id == session.clientEntID)
-        if not is_self and entity_id not in session.entities:
-            print(f"[{session.addr}] [PKT07] Unknown entity {entity_id} movement dropped")
-            return
-
-        delta_x = br.read_method_45()
-        delta_y = br.read_method_45()
-        delta_vx = br.read_method_45()
-
-        STATE_BITS = Entity.const_316
-        ent_state = br.read_method_6(STATE_BITS)
-        flags = {
-            'b_left':      bool(br.read_method_15()),
-            'b_running':   bool(br.read_method_15()),
-            'b_jumping':   bool(br.read_method_15()),
-            'b_dropping':  bool(br.read_method_15()),
-            'b_backpedal': bool(br.read_method_15()),
-        }
-        is_airborne = bool(br.read_method_15())
-        velocity_y = br.read_method_24() if is_airborne else 0
-        ent = session.entities.get(entity_id, {})
-        old_x = ent.get('pos_x', 0)
-        old_y = ent.get('pos_y', 0)
-        new_x = old_x + delta_x
-        new_y = old_y + delta_y
-        ent.update({
-            'pos_x': new_x,
-            'pos_y': new_y,
-            'velocity_x': ent.get('velocity_x', 0) + delta_vx,
-            'velocity_y': velocity_y,
-            'ent_state': ent_state,
-            **flags
-        })
-        session.entities[entity_id] = ent
-
-        if is_self:
-            players = level_players.setdefault(session.current_level, [])
-            players[:] = [p for p in players if p["id"] != entity_id]
-            players.append({"id": entity_id, "pos_x": new_x, "pos_y": new_y, "session": session})
-
-        if ent.get('is_player'):
-            for char in session.char_list:
-                if char['name'] == session.current_character:
-                    char['CurrentLevel'] = {
-                        'name': session.current_level,
-                        'x': new_x,
-                        'y': new_y
-                    }
-                    break
-
-        for other in all_sessions:
-            if other is not session and other.world_loaded and other.current_level == session.current_level:
-                other.conn.sendall(data)
-    except Exception as e:
-        print(f"[{session.addr}] [PKT07] Error parsing packet: {e}")
-        for line in br.get_debug_log():
-            print(line)
 
 def handle_start_skit(session, data, all_sessions):
     """
