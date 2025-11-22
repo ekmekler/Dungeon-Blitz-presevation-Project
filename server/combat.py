@@ -7,29 +7,9 @@ from Commands import build_loot_drop_packet
 from bitreader import BitReader
 from constants import LinkUpdater, Entity, PowerType
 from globals import send_consumable_update
-from level_config import SPAWN_POINTS
 
                 # Helpers
     #####################################
-def get_player_coordinates(session):
-    ent_id = session.clientEntID
-    ent = session.entities.get(ent_id)
-
-    if ent:
-        x = ent.get("pos_x")
-        y = ent.get("pos_y")
-        if x is not None and y is not None:
-            return int(x), int(y)
-
-    char = next((c for c in session.char_list
-                 if c.get("name") == session.current_character), None)
-    if char:
-        lvl = char.get("CurrentLevel", {})
-        if isinstance(lvl, dict) and "x" in lvl and "y" in lvl:
-            return int(lvl["x"]), int(lvl["y"])
-
-    spawn = SPAWN_POINTS.get(session.current_level, {"x": 0, "y": 0})
-    return int(spawn["x"]), int(spawn["y"])
 
 def get_base_hp_for_level(level):
     if level < 1:
