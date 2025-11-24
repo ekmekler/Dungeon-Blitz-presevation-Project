@@ -251,7 +251,6 @@ def handle_open_door(session, data, conn):
 
     # --- Prepare for upcoming level transition ---
     session.world_loaded = False
-    session.entities.clear()
 
 def handle_level_transfer_request(session, data, conn):
     """
@@ -284,7 +283,7 @@ def handle_level_transfer_request(session, data, conn):
     if not requested_level_name or requested_level_name == "None":
         target_level = default_target_level
         print(
-            f"[{session.addr}] WARNING: Empty/None level_name in 0x1D, "
+            f"[{session.addr}] ERROR: Empty/None level_name in 0x1D, "
             f"using target_level={target_level}"
         )
     else:
@@ -299,9 +298,13 @@ def handle_level_transfer_request(session, data, conn):
 
     # Capture previous level coords *before* entity removal
     ent = session.entities.get(session.clientEntID, {})
-    old_x = ent.get("pos_x", 0)
-    old_y = ent.get("pos_y", 0)
-    has_old_coord = bool(ent)  # Only True if we have real coordinates
+    old_x = ent.get("pos_x")
+    old_y = ent.get("pos_y")
+    has_old_coord = (old_x is not None and old_y is not None)
+
+    if not has_old_coord:
+        print(f"[ERROR] Lost player coordinates before level transfer! "
+              f"ent={ent} old_x={old_x} old_y={old_y}")
 
     # Remove old player entity if present
     if session.clientEntID in session.entities:
@@ -354,13 +357,22 @@ def handle_level_transfer_request(session, data, conn):
 
     is_hard = target_level.endswith("Hard")
 
+    # Safely coerce old coords only if we actually have them
+    if has_old_coord and isinstance(old_x, (int, float)) and isinstance(old_y, (int, float)):
+        safe_old_x = int(old_x)
+        safe_old_y = int(old_y)
+    else:
+        safe_old_x = 0
+        safe_old_y = 0
+        has_old_coord = False
+
     pkt_out = build_enter_world_packet(
         transfer_token=new_token,
         old_level_id=0,
         old_swf=old_swf,
         has_old_coord=has_old_coord,
-        old_x=int(old_x),
-        old_y=int(old_y),
+        old_x=safe_old_x,
+        old_y=safe_old_y,
         host="127.0.0.1",
         port=8080,
         new_level_swf=new_swf,
@@ -478,8 +490,11 @@ def handle_entity_incremental_update(session, data, all_sessions):
 
     # --- calculate new position ---
     ent = session.entities.get(entity_id, {})
-    old_x = ent.get("pos_x", 0)
-    old_y = ent.get("pos_y", 0)
+    old_x = ent.get("pos_x")
+    old_y = ent.get("pos_y")
+
+    if old_x is None or old_y is None:
+        print("[ERROR] Entity missing position data in movement update!")
 
     new_x = old_x + delta_x
     new_y = old_y + delta_y

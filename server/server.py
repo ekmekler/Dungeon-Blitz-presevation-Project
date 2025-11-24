@@ -156,7 +156,8 @@ class ClientSession:
         if s:
             s.running = False
 
-        if self.current_level:
+        # Only remove from level if fully loaded in
+        if self.world_loaded and self.current_level:
             _level_remove(self.current_level, self)
 
         if self in all_sessions:
