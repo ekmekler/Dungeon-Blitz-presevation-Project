@@ -1,6 +1,8 @@
 import json, struct
+import pprint
 import random
 import secrets
+import time
 
 from Character import save_characters, build_paperdoll_packet, get_inventory_gears, \
     build_level_gears_packet, SAVE_PATH_TEMPLATE
@@ -8,7 +10,8 @@ from bitreader import BitReader
 from constants import GearType, EntType, class_64, class_1, DyeType, Entity, class_3
 from BitBuffer import BitBuffer
 from constants import get_dye_color
-from globals import build_start_skit_packet, send_premium_purchase, _send_error
+from globals import build_start_skit_packet, send_premium_purchase, _send_error, get_active_character_name
+
 
 #TODO...
 def handle_queue_potion(session, data):
@@ -1099,31 +1102,58 @@ def handle_group_invite(session, data, all_sessions):
     invitee.conn.sendall(invite_packet)
     print(f"[{session.addr}] [PKT65] Sent 0x58 invite to {invitee.current_character}")
 
+#TODO...
+def handle_linkupdater(session, data):
+    return  # return here no point doing anything here for now at least
 
-def handle_linkupdater(session, data, all_sessions):
-    payload = data[4:]
-    br = BitReader(payload, debug=False)
-    try:
-        client_time = br.read_method_24()
-        is_desync   = bool(br.read_method_15())
-        server_time = br.read_method_24()
+    br = BitReader(data[4:])
 
-        # Update our session’s clock‐sync info
-        session.client_elapsed  = client_time
-        session.server_elapsed  = server_time
-        session.clock_desynced  = is_desync
-        session.clock_offset_ms = server_time - client_time
+    client_elapsed = br.read_method_24()
+    client_desync  = br.read_method_15()
+    server_echo    = br.read_method_24()
 
-        #print(f"[{session.addr}] [PKTA2] Sync: client={client_time}ms "
-        #      f"server={server_time}ms desync={is_desync} offset={session.clock_offset_ms}ms")
+    now_ms = int(time.time() * 1000)
 
-        #TODO...
-        # If the client thinks we’re badly out of sync, we can reply here
-        # response = build_clock_correction_packet(...)
-        # session.conn.sendall(response)
+    # First update → establish baseline
+    if not hasattr(session, "clock_base"):
+        session.clock_base = now_ms
+        session.clock_offset_ms = 0
+        session.last_desync_time = None
 
-    except Exception as e:
-        print(f"[{session.addr}] [PKTA2] Error parsing link-sync: {e}")
+    session.client_elapsed = client_elapsed
+    session.server_elapsed = server_echo
+
+    # Compute offset (server_time - expected_client_time)
+    session.clock_offset_ms = now_ms - (session.clock_base + client_elapsed)
+    offset = abs(session.clock_offset_ms)
+
+    DESYNC_THRESHOLD = 2500     # ms allowed before warning
+    DESYNC_KICK_TIME = 2.0      # seconds of continuous desync before kick
+
+    if offset > DESYNC_THRESHOLD or client_desync:
+        # First time detecting desync
+        if session.last_desync_time is None:
+            session.last_desync_time = time.time()
+            print(f"[{session.addr}] Desync detected offset={offset}ms (timer started)")
+        else:
+            elapsed = time.time() - session.last_desync_time
+            if elapsed >= DESYNC_KICK_TIME:
+                print(f"[{session.addr}] Kicking player for severe desync (offset={offset}ms)")
+                session.conn.close()
+                session.stop()
+                return
+
+    props = {
+        "client_elapsed": client_elapsed,
+        "client_desync": client_desync,
+        "server_echo": server_echo,
+        "clock_base": getattr(session, "clock_base", None),
+        "server_now_ms": now_ms,
+        "client_offset_ms": session.clock_offset_ms,
+    }
+
+    #print(f"Player [{get_active_character_name(session)}]")
+    #pprint.pprint(props, indent=4)
 
 def handle_start_skit(session, data, all_sessions):
     """

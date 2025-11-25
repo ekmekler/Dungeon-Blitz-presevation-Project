@@ -248,7 +248,7 @@ def handle_client(session: ClientSession):
             elif pkt == 0x07:
                 handle_entity_incremental_update(session, data, all_sessions)
             elif pkt == 0xA2:
-                handle_linkupdater(session, data, all_sessions)
+                handle_linkupdater(session, data)
             elif pkt == 0x09:
                 handle_power_cast(session, data, all_sessions)
             elif pkt == 0x08:
