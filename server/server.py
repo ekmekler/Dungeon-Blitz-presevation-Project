@@ -76,7 +76,7 @@ class ClientSession:
         # World state
         self.current_level = None
         self.entry_level = None
-        self.world_loaded = False
+        self.player_spawned = False
         self.clientEntID = None       # entity ID assigned to the player
 
         # Entities / NPCs
@@ -158,7 +158,7 @@ class ClientSession:
             s.running = False
 
         # Only remove from level if fully loaded in
-        if self.world_loaded and self.current_level:
+        if self.player_spawned and self.current_level:
             _level_remove(self.current_level, self)
 
         if self in all_sessions:

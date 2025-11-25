@@ -43,7 +43,7 @@ def update_npc_physics(npc, dt=TIMESTEP, steps=18):
     npc["velocity_x"] = vx
 
 def broadcast_npc_move(npc, level_name, delta_x, delta_y, delta_vx):
-    recipients = [s for s in all_sessions if s.world_loaded and s.current_level == level_name]
+    recipients = [s for s in all_sessions if s.player_spawned and s.current_level == level_name]
 
     bb = BitBuffer()
     bb.write_method_4(npc["id"])

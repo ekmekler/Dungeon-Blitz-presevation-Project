@@ -116,7 +116,7 @@ def handle_entity_destroy_server(session, entity_id: int, is_player: bool, all_s
 
     pkt = build_destroy_entity_packet(entity_id, is_player)
     for s in all_sessions:
-        if s.world_loaded and s.current_level == session.current_level:
+        if s.player_spawned and s.current_level == session.current_level:
             try:
                 s.conn.sendall(pkt)
             except Exception:

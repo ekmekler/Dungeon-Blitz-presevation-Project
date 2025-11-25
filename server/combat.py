@@ -36,7 +36,7 @@ def handle_entity_destroy(session, data, all_sessions):
     for other in all_sessions:
         if (
             other is not session
-            and other.world_loaded
+            and other.player_spawned
             and other.current_level == session.current_level
         ):
             other.conn.sendall(data)
@@ -52,7 +52,7 @@ def handle_buff_tick_dot(session, data, all_sessions):
     for other in all_sessions:
         if (
                 other is not session
-                and other.world_loaded
+                and other.player_spawned
                 and other.current_level == session.current_level
         ):
             other.conn.sendall(data)
@@ -84,7 +84,7 @@ def handle_respawn_broadcast(session, data, all_sessions):
     pkt = struct.pack(">HH", 0x82, len(payload)) + payload
 
     for other in all_sessions:
-        if other is not session and other.world_loaded and other.current_level == session.current_level:
+        if other is not session and other.player_spawned and other.current_level == session.current_level:
             other.conn.sendall(pkt)
 
 def handle_request_respawn(session, data):
@@ -139,7 +139,7 @@ def handle_power_hit(session, data, all_sessions):
     for other in all_sessions:
         if (
                 other is not session
-                and other.world_loaded
+                and other.player_spawned
                 and other.current_level == session.current_level
         ):
             other.conn.sendall(data)
@@ -156,7 +156,7 @@ def handle_projectile_explode(session, data, all_sessions):
     for other in all_sessions:
         if (
             other is not session
-            and other.world_loaded
+            and other.player_spawned
             and other.current_level == session.current_level
         ):
             other.conn.sendall(data)
@@ -203,7 +203,7 @@ def handle_add_buff(session, data, all_sessions):
     for other in all_sessions:
         if (
             other is not session
-            and other.world_loaded
+            and other.player_spawned
             and other.current_level == session.current_level
         ):
             other.conn.sendall(data)
@@ -231,7 +231,7 @@ def handle_remove_buff(session, data, all_sessions):
     for other in all_sessions:
         if (
             other is not session
-            and other.world_loaded
+            and other.player_spawned
             and other.current_level == session.current_level
         ):
             other.conn.sendall(data)
@@ -242,7 +242,7 @@ def handle_change_max_speed(session, data, all_sessions):
     speed_mod_int = br.read_method_9()
     for other in all_sessions:
         if (
-            other.world_loaded
+            other.player_spawned
             and other.current_level == session.current_level
         ):
             other.conn.sendall(data)
@@ -305,7 +305,7 @@ def handle_grant_reward(session, data, all_sessions):
             value2=v2
         )
         for other in all_sessions:
-            if other.world_loaded and other.current_level == session.current_level:
+            if other.player_spawned and other.current_level == session.current_level:
                 other.conn.sendall(pkt)
 
 def handle_power_cast(session, data, all_sessions):
@@ -355,7 +355,7 @@ def handle_power_cast(session, data, all_sessions):
     for other in all_sessions:
         if (
             other is not session
-            and other.world_loaded
+            and other.player_spawned
             and other.current_level == session.current_level
         ):
             other.conn.sendall(data)

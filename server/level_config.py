@@ -250,7 +250,7 @@ def handle_open_door(session, data, conn):
     print(f"[{session.addr}] Sent DOOR_TARGET: doorID={door_id}, level='{target_level}'")
 
     # --- Prepare for upcoming level transition ---
-    session.world_loaded = False
+    session.player_spawned = False
 
 def handle_level_transfer_request(session, data, conn):
     """
@@ -533,5 +533,5 @@ def handle_entity_incremental_update(session, data, all_sessions):
                     break
 
     for other in all_sessions:
-        if other is not session and other.world_loaded and other.current_level == session.current_level:
+        if other is not session and other.player_spawned and other.current_level == session.current_level:
             other.conn.sendall(data)

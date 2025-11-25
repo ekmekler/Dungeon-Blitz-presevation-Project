@@ -328,7 +328,7 @@ def send_existing_entities_to_joiner(joiner, all_sessions):
     for other in all_sessions:
         if other is joiner:
             continue
-        if not other.world_loaded or other.current_level != joiner.current_level:
+        if not other.player_spawned or other.current_level != joiner.current_level:
             continue
 
         # Only send the entity that belongs to the player's character
@@ -424,8 +424,8 @@ def handle_entity_full_update(session, data, all_sessions):
         session.entities[entity_id] = props
 
         # First-time world load for this player
-        if not session.world_loaded:
-            session.world_loaded = True
+        if not session.player_spawned:
+            session.player_spawned = True
             send_existing_entities_to_joiner(session, all_sessions)
 
             # Broadcast THIS player’s spawn to others
@@ -436,7 +436,7 @@ def handle_entity_full_update(session, data, all_sessions):
                     pkt = Send_Entity_Data(ent_dict)
                     framed = struct.pack(">HH", 0x0F, len(pkt)) + pkt
                     for other in all_sessions:
-                        if other is not session and other.world_loaded and other.current_level == session.current_level:
+                        if other is not session and other.player_spawned and other.current_level == session.current_level:
                             other.conn.sendall(framed)
                             print(f"[JOIN] Broadcasted Send_Entity_Data for {ent_dict['name']} → {other.addr}")
                 except Exception as e:
@@ -444,7 +444,7 @@ def handle_entity_full_update(session, data, all_sessions):
 
         # Always forward raw 0x08 packet for movement sync
         for other in all_sessions:
-            if other is not session and other.world_loaded and other.current_level == session.current_level:
+            if other is not session and other.player_spawned and other.current_level == session.current_level:
                 other.conn.sendall(data)
                 print(f"[{session.addr}] [PKT08] Broadcasted raw packet to {other.addr}")
 

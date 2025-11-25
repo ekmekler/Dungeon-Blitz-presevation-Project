@@ -475,7 +475,7 @@ def handle_change_look(session, raw_data, all_sessions):
     # ─── (6) Broadcast to nearby clients ────────────────────────────────────────
     for other in all_sessions:
         if (other is not session and
-            other.world_loaded and
+            other.player_spawned and
             other.current_level == session.current_level):
             send_look_update_packet(
                 other,
@@ -888,7 +888,7 @@ def handle_apply_dyes(session, payload, all_sessions):
     # Sync to self + broadcast
     for target in [session] + [
         o for o in all_sessions
-        if o is not session and o.world_loaded and o.current_level == session.current_level
+        if o is not session and o.player_spawned and o.current_level == session.current_level
     ]:
         send_dye_sync_packet(
             target,
@@ -1044,7 +1044,7 @@ def handle_mount_equip_packet(session, data, all_sessions):
 
         # Broadcast to other sessions (optional, based on game design)
         for other in all_sessions:
-            if other is not session and other.world_loaded and other.current_level == session.current_level:
+            if other is not session and other.player_spawned and other.current_level == session.current_level:
                 other.conn.sendall(data)
                 print(f"[{session.addr}] [PKT0xB2] Broadcasted mount update to {other.addr}")
 
@@ -1081,7 +1081,7 @@ def handle_emote_begin(session, data, all_sessions):
     # 2) Broadcast unchanged packet to all other clients in the same level
     for other in all_sessions:
         if (other is not session
-            and other.world_loaded
+            and other.player_spawned
             and other.current_level == session.current_level):
             try:
                 other.conn.sendall(data)
@@ -1184,7 +1184,7 @@ def handle_public_chat(session, data, all_sessions):
     for other in all_sessions:
         if other is session:
             continue
-        if not other.world_loaded or other.current_level != session.current_level:
+        if not other.player_spawned or other.current_level != session.current_level:
             continue
         try:
             other.conn.sendall(packet)
@@ -1242,7 +1242,7 @@ def handle_start_skit(session, data, all_sessions):
         packet = struct.pack(">HH", 0x76, len(payload)) + payload
 
         for other_session in all_sessions:
-            if other_session.world_loaded and other_session.current_level == session.current_level:
+            if other_session.player_spawned and other_session.current_level == session.current_level:
                 other_session.conn.sendall(packet)
 
         print(f"[{session.addr}] [PKT0xC5] Sent skit message from entity {entity_id}: '{text}'")
