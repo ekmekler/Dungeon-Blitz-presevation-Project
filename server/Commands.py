@@ -677,57 +677,6 @@ def handle_update_equipment(session, raw_data):
     # Echo back to client
     session.conn.sendall(raw_data)
 
-def handle_private_message(session, data, all_sessions):
-    payload = data[4:]
-    try:
-        br = BitReader(payload)
-        recipient_name = br.read_method_13()
-        message = br.read_method_13()
-        print(f"[{session.addr}] [PKT46] Private message from {session.current_character} to {recipient_name}: {message}")
-
-        # Find recipient session
-        recipient_session = next(
-            (s for s in all_sessions
-             if s.current_character
-             and s.current_character.lower() == recipient_name.lower()
-             and s.authenticated),
-            None
-        )
-
-        # For recipient (0x47): senderName + message
-        bb_recipient = BitBuffer()
-        bb_recipient.write_method_13(session.current_character)  # Sender's name
-        bb_recipient.write_method_13(message)
-        payload_out_recipient = bb_recipient.to_bytes()
-        pkt_recipient = struct.pack(">HH", 0x47, len(payload_out_recipient)) + payload_out_recipient
-
-        # For sender (0x48): recipientName + message
-        bb_sender = BitBuffer()
-        bb_sender.write_method_13(recipient_name)  # Recipient's name
-        bb_sender.write_method_13(message)
-        payload_out_sender = bb_sender.to_bytes()
-        pkt_sender = struct.pack(">HH", 0x48, len(payload_out_sender)) + payload_out_sender
-
-        if recipient_session:
-            # Send to recipient
-            recipient_session.conn.sendall(pkt_recipient)
-            print(
-                f"[{session.addr}] [PKT47] Sent private message to {recipient_session.addr} ({recipient_session.current_character})")
-
-            # Send confirmation to sender
-            session.conn.sendall(pkt_sender)
-            print(
-                f"[{session.addr}] [PKT48] Sent private message confirmation to sender {session.addr} ({session.current_character})")
-
-        else:
-            print(f"[{session.addr}] [PKT46] Recipient {recipient_name} not found")
-            err = f"Player {recipient_name} not found".encode("utf-8")
-            pl = struct.pack(">H", len(err)) + err
-            session.conn.sendall(struct.pack(">HH", 0x44, len(pl)) + pl)
-
-    except Exception as e:
-        print(f"[{session.addr}] [PKT46] Parse error: {e}, raw payload = {payload.hex()}")
-
 
 def handle_hp_increase_notice(session, data):
        pass

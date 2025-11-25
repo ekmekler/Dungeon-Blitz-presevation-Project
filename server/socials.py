@@ -52,7 +52,7 @@ def handle_public_chat(session, data, all_sessions):
     br = BitReader(data[4:])
     entity_id = br.read_method_9()
     message   = br.read_method_13()
-    
+
     # Forward raw unmodified packet to other players in the same level
     for other in all_sessions:
         if other is session:
@@ -64,4 +64,47 @@ def handle_public_chat(session, data, all_sessions):
 
         other.conn.sendall(data)
         print(f"[{get_active_character_name(session)}] Says : \"{message}\"")
+
+def handle_private_message(session, data, all_sessions):
+    br = BitReader(data[4:])
+    recipient_name = br.read_method_13()
+    message        = br.read_method_13()
+
+    # --- Find recipient session ---
+    recipient_session = next(
+        (s for s in all_sessions
+         if s.authenticated
+         and s.current_character
+         and s.current_character.lower() == recipient_name.lower()),
+        None
+    )
+
+    def make_packet(pkt_id, name, msg):
+        bb = BitBuffer()
+        bb.write_method_13(name)
+        bb.write_method_13(msg)
+        body = bb.to_bytes()
+        return struct.pack(">HH", pkt_id, len(body)) + body
+
+    sender_name = session.current_character
+
+    if recipient_session:
+        # 0x47 → delivered to recipient
+        recipient_session.conn.sendall(make_packet(0x47, sender_name, message))
+
+        # 0x48 → feedback to sender
+        session.conn.sendall(make_packet(0x48, recipient_name, message))
+
+        print(f"[PM] {sender_name} → {recipient_session.current_character}: \"{message}\"")
+        return
+
+    # --- Recipient not found → send error (0x44) ---
+    err_txt = f"Player {recipient_name} not found"
+    err_bytes = err_txt.encode("utf-8")
+    pkt = struct.pack(">HH", 0x44, len(err_bytes) + 2) + struct.pack(">H", len(err_bytes)) + err_bytes
+    session.conn.sendall(pkt)
+
+    print(f"[PM-ERR] {sender_name} → {recipient_name} (NOT FOUND)")
+
+
 
