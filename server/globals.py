@@ -28,6 +28,18 @@ def _level_add(level, session):
 # Helpers
 #############################################
 
+def send_chat_status(session, text: str):
+    """
+    Send PKTTYPE_CHAT_STATUS (0x44) to show a chat status message
+    such as 'Player not found' or 'You cannot friend yourself'.
+    """
+    bb = BitBuffer()
+    bb.write_method_13(text)
+
+    payload = bb.to_bytes()
+    pkt = struct.pack(">HH", 0x44, len(payload)) + payload
+    session.conn.sendall(pkt)
+
 def get_active_character_name(session) -> str:
     return session.current_character or "<unknown>"
 

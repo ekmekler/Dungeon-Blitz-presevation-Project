@@ -1,10 +1,50 @@
 import struct
 
 from BitBuffer import BitBuffer
+from Character import load_characters
 from bitreader import BitReader
 from constants import Entity
-from globals import level_players, get_active_character_name
+from globals   import level_players, get_active_character_name , current_characters
 
+# Helpers
+############################################################
+
+def find_online_session(all_sessions, name):
+    """Return session if player is online."""
+    name = name.lower()
+    for s in all_sessions:
+        if getattr(s, "current_character", "").lower() == name:
+            return s
+    return None
+
+def find_char_data_from_server_memory(name):
+    """Returns the character save dict (already loaded on boot)."""
+    for uid, current_char_name in current_characters.items():
+        if current_char_name.lower() == name.lower():
+
+            chars = load_characters(uid)
+            for c in chars:
+                if c["name"].lower() == name.lower():
+                    return c
+    return {}  # offline or unknown → dummy fallback
+
+def get_live_friend_info(name, session, char):
+    """Build the dynamic friend block (class, level, online)."""
+    is_online = session is not None
+
+    if is_online:
+        class_name = session.current_char_dict.get("class", "Paladin")
+        level = session.current_char_dict.get("level", 1)
+    else:
+        class_name = char.get("class", "Paladin")
+        level = char.get("level", 1)
+
+    return {
+        "name": name,
+        "className": class_name,
+        "level": level,
+        "isOnline": is_online,
+    }
 
 def build_and_send_zone_player_list(session, valid_entries):
     bb = BitBuffer()
@@ -42,6 +82,8 @@ def send_zone_players_update(session, players):
             "level": level,
         })
     build_and_send_zone_player_list(session, valid_entries)
+
+############################################################
 
 def handle_zone_panel_request(session):
     level = session.current_level
@@ -105,6 +147,4 @@ def handle_private_message(session, data, all_sessions):
     session.conn.sendall(pkt)
 
     print(f"[PM-ERR] {sender_name} → {recipient_name} (NOT FOUND)")
-
-
 

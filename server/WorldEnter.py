@@ -28,7 +28,9 @@ from constants import (
     GEARTYPE_BITS,
     class_119, class_111, class_9, class_66, MASTERCLASS_TO_BUILDING, class_21, Game, Mission, Entity,
 )
+from globals import all_sessions
 from missions import get_total_mission_defs, get_mission_def
+from socials import find_online_session, find_char_data_from_server_memory, get_live_friend_info
 
 CLASS_BUILD_ORDER = {
     "paladin": [2, 12, 3, 4, 5, 1, 13],
@@ -306,32 +308,32 @@ def Player_Data_Packet(char: dict,
         # ──────────────(Friends)──────────────
         friends = char.get("friends", [])
 
-        # 1) Friend count
+        #  Friend count
         buf.write_method_4(len(friends))
 
-        # 2) Friend entries
-        for friend in friends:
-            # var_207 → account name
-            buf.write_method_13(friend["name"])
+        #  Friend entries
+        for entry in friends:
+            fname = entry["name"]
+            is_request = entry.get("isRequest", False)
 
-            # var_276 → isRequest
-            buf.write_method_11(1 if friend.get("isRequest", False) else 0, 1)
+            friend_sess = find_online_session(all_sessions, fname)
+            friend_char = find_char_data_from_server_memory(fname)
 
-            # bOnline
-            online = friend.get("isOnline", False)
-            buf.write_method_11(1 if online else 0, 1)
+            info = get_live_friend_info(fname, friend_sess, friend_char)
+            online = info["isOnline"]
+            class_name = info["className"]
+            level = info["level"]
+
+            #  Write protocol data
+            buf.write_method_13(fname)  # name
+            buf.write_method_11(1 if is_request else 0, 1)  # isRequest
+            buf.write_method_11(1 if online else 0, 1)  # isOnline
 
             if online:
-                # Has custom char name?
-                custom_name = friend.get("name", "") != friend["name"]
-                buf.write_method_11(1 if custom_name else 0, 1)
-                if custom_name:
-                    buf.write_method_13(friend["name"])
-
-                # Class + Level
-                class_id = CLASS_NAME_TO_ID.get(friend.get("className", ""), 0)
-                buf.write_method_11(class_id, ENTITY_CONST_244)
-                buf.write_method_11(friend.get("level", 1), MAX_CHAR_LEVEL_BITS)
+                buf.write_method_11(0, 1)  # hasCustomName = false
+                class_id = CLASS_NAME_TO_ID.get(class_name, 0)
+                buf.write_method_11(class_id, ENTITY_CONST_244)  # class
+                buf.write_method_11(level, MAX_CHAR_LEVEL_BITS)  # level
 
 
         # ──────────────(Abilities)──────────────

@@ -5,37 +5,25 @@ import sys
 import threading
 import time
 
-from Character import save_characters
-from Commands import handle_gear_packet, \
-    handle_apply_dyes, handle_equip_rune, handle_change_look, handle_create_gearset, handle_name_gearset, \
-    handle_apply_gearset, handle_update_equipment, handle_group_invite, PaperDoll_Request, handle_hp_increase_notice, handle_volume_enter, \
-    handle_change_offset_y, handle_start_skit, handle_lockbox_reward, handle_linkupdater, \
-    handle_emote_begin, handle_mount_equip_packet, handle_pet_info_packet, \
-    handle_collect_hatched_egg, handle_talk_to_npc, handle_char_regen, handle_request_armory_gears, handle_queue_potion
-from socials import handle_zone_panel_request, handle_public_chat, handle_private_message
-from talent import handle_respec_talent_tree, handle_allocate_talent_tree_points, handle_talent_claim, \
-    handle_talent_speedup, \
-    handle_train_talent_point, handle_clear_talent_research, handle_active_talent_change_request
-from skills import handle_skill_trained_claim, handle_skill_research_cancel_request, handle_skill_speed_up_request, handle_start_skill_training, \
-    handle_equip_active_skills
 from PolicyServer import start_policy_server
-from Forge import handle_forge_speed_up_packet, handle_start_forge, handle_collect_forge_charm, handle_cancel_forge, \
-    handle_use_forge_xp_consumable, handle_allocate_magic_forge_artisan_skill_points, handle_magic_forge_reroll
-from buildings import handle_building_claim, handle_building_upgrade, handle_building_speed_up_request, \
-    handle_cancel_building_upgrade
-from combat import handle_entity_destroy, handle_buff_tick_dot, handle_respawn_broadcast, handle_request_respawn, \
-    handle_grant_reward, handle_power_hit, handle_projectile_explode, handle_add_buff, handle_remove_buff, \
-    handle_change_max_speed, handle_power_cast
-from entity import handle_entity_full_update
-from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, extended_sent_map, HOST, \
-    PORTS, Client_Crash_Reports
-from level_config import handle_open_door, handle_level_transfer_request, handle_request_door_state, LEVEL_CONFIG, \
-    handle_entity_incremental_update
-from login import handle_login_version, handle_login_create, handle_login_authenticate, handle_login_character_create, \
-    handle_character_select, handle_gameserver_login
+from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, extended_sent_map, HOST, PORTS, Client_Crash_Reports
 from scheduler import set_active_session_resolver
 from static_server import start_static_server
+from Character import save_characters
 
+from login import handle_login_version, handle_login_create, handle_login_authenticate, handle_login_character_create, handle_character_select, handle_gameserver_login
+from level_config import handle_open_door, handle_level_transfer_request, handle_request_door_state, LEVEL_CONFIG, handle_entity_incremental_update
+from Forge import handle_forge_speed_up_packet, handle_start_forge, handle_collect_forge_charm, handle_cancel_forge, handle_use_forge_xp_consumable, handle_allocate_magic_forge_artisan_skill_points, handle_magic_forge_reroll
+from talent import handle_respec_talent_tree, handle_allocate_talent_tree_points, handle_talent_claim, handle_talent_speedup, handle_train_talent_point, handle_clear_talent_research, handle_active_talent_change_request
+from skills import handle_skill_trained_claim, handle_skill_research_cancel_request, handle_skill_speed_up_request, handle_start_skill_training, handle_equip_active_skills
+from entity import handle_entity_full_update
+from combat import handle_entity_destroy, handle_buff_tick_dot, handle_respawn_broadcast, handle_request_respawn, handle_grant_reward, handle_power_hit, handle_projectile_explode, handle_add_buff, handle_remove_buff, handle_change_max_speed, handle_power_cast
+from buildings import handle_building_claim, handle_building_upgrade, handle_building_speed_up_request, handle_cancel_building_upgrade
+from socials import handle_zone_panel_request, handle_public_chat, handle_private_message
+from Commands import handle_gear_packet, handle_apply_dyes, handle_equip_rune, handle_change_look, handle_create_gearset, handle_name_gearset, \
+    handle_apply_gearset, handle_update_equipment, handle_group_invite, PaperDoll_Request, handle_hp_increase_notice, handle_volume_enter, \
+    handle_change_offset_y, handle_start_skit, handle_lockbox_reward, handle_linkupdater, handle_emote_begin, handle_mount_equip_packet, \
+    handle_pet_info_packet, handle_collect_hatched_egg, handle_talk_to_npc, handle_char_regen, handle_request_armory_gears, handle_queue_potion
 
 def _level_remove(level, session):
     s = level_registry.get(level)
@@ -213,12 +201,10 @@ def handle_client(session: ClientSession):
                 if len(payload) != length:
                     print(f"[{addr}] ⚠️ Length mismatch: header says {length} but payload is {len(payload)}")
 
-            #Login Screen
+            # Login.py
             ############################################
             if pkt == 0x11:
                 handle_login_version(session, data, conn)
-            elif pkt == 0x19:
-                PaperDoll_Request(session, data, conn)
             elif pkt == 0x13:
                 handle_login_create(session, data, conn)
             elif pkt == 0x14:
@@ -227,146 +213,30 @@ def handle_client(session: ClientSession):
                 handle_login_character_create(session, data, conn)
             elif pkt == 0x16:
                 handle_character_select(session, data, conn)
-            elif pkt == 0x1f:# --- 0x1F: Welcome / Player_Data (finalize level transfer and spawn NPCs) ---
+            elif pkt == 0x1f:  # Welcome / Player_Data (finalize level transfer and spawn NPCs)
                 handle_gameserver_login(session, data, conn)
             ############################################
 
-            # Level & Door related packets
-            ###################################
-            elif pkt == 0x1D:# --- 0x1D: Transfer Ready (prepare ENTER_WORLD, do NOT finalize session.current_level) ---
-                handle_level_transfer_request(session, data, conn)
+            # level_config.py
+            ############################################
             elif pkt == 0x2D:
                 handle_open_door(session, data, conn)
+            elif pkt == 0x1D:  # Transfer Ready (prepare ENTER_WORLD, do NOT finalize session.current_level)
+                handle_level_transfer_request(session, data, conn)
             elif pkt == 0x41:
                 handle_request_door_state(session, data, conn)
-            elif pkt == 0x7D:
-                handle_change_offset_y(session, data)
-            ###################################
-
-            #Entity Update Related packets
-            ###################################
             elif pkt == 0x07:
                 handle_entity_incremental_update(session, data, all_sessions)
-            elif pkt == 0xA2:
-                handle_linkupdater(session, data)
-            elif pkt == 0x09:
-                handle_power_cast(session, data, all_sessions)
-            elif pkt == 0x08:
-                handle_entity_full_update(session, data, all_sessions)
-            ###################################
-
-              # Combat Related packets
-            ############################################
-            elif pkt == 0x0D:
-               handle_entity_destroy(session, data, all_sessions)
-            elif pkt == 0x79:
-               handle_buff_tick_dot(session, data, all_sessions)
-            elif pkt == 0x82:
-               handle_respawn_broadcast(session, data, all_sessions)
-            elif pkt == 0x77:
-                handle_request_respawn(session, data)
-            elif pkt == 0x2A:
-                handle_grant_reward(session, data, all_sessions)
-            elif pkt == 0x0A:
-                handle_power_hit(session, data, all_sessions)
-            elif pkt == 0x0E:
-                handle_projectile_explode(session, data, all_sessions)
-            elif pkt == 0x0B:
-                handle_add_buff(session, data, all_sessions)
-            elif pkt == 0x0C:
-                handle_remove_buff(session, data, all_sessions)
-            elif pkt == 0x8A:
-                handle_change_max_speed(session, data, all_sessions)
             ############################################
 
-            #Chatting messages NPC talking Emotes etc...
+            # forge.py
             ############################################
-            elif pkt == 0x2C:
-                handle_public_chat(session, data, all_sessions)
-            elif pkt == 0xC5:
-                handle_start_skit(session, data,all_sessions)
-            elif pkt == 0x46:
-                handle_private_message(session, data, all_sessions)
-            elif pkt == 0x7E:
-               handle_emote_begin(session, data, all_sessions)
-            elif pkt == 0x113:
-                #handle_alert_update(session, data)
-                pass
-            elif pkt == 0x7A:
-                handle_talk_to_npc(session, data, all_sessions)
-                pass
-            elif pkt == 0x95:
-                handle_zone_panel_request(session)
-            ############################################
-
-            # Group Related packets
-            ############################################
-            elif pkt == 0x65:
-                handle_group_invite(session, data, all_sessions)
-            ############################################
-
-            # Skill Related packets
-            ############################################
-            elif pkt == 0xBD:
-                handle_equip_active_skills(session, data)
-            elif pkt == 0xBE:
-                handle_start_skill_training(session, data, conn)
-            elif pkt == 0xD1:
-                handle_skill_trained_claim(session)
-            elif pkt == 0xDD:
-                handle_skill_research_cancel_request(session)
-            elif pkt == 0xDE:
-                handle_skill_speed_up_request(session, data)
-            ############################################
-
-            # Entity Visuals related packets
-            ############################################
-            elif pkt == 0x8E:
-                handle_change_look(session, data, all_sessions)
-            elif pkt == 0xBA:
-                payload = data[4:]
-                handle_apply_dyes(session, payload, all_sessions)
-            ############################################
-
-           # Barn and pets related packets
-            ############################################
-            elif pkt == 0xB2:
-                handle_mount_equip_packet(session, data, all_sessions)
-            elif pkt == 0xB3:
-                handle_pet_info_packet(session, data, all_sessions)
-            elif pkt == 0xEA:
-                handle_collect_hatched_egg(session, data)
-            ############################################
-
-            # Gear Set Related Packets
-            ############################################
-            elif pkt == 0xC8:
-                handle_name_gearset(session, data)
-            elif pkt == 0xC7:
-                handle_create_gearset(session, data)
-            elif pkt == 0xC6:
-                handle_apply_gearset(session, data)
-            ############################################
-
-            # Gear Related packets
-            ############################################
-            elif pkt == 0xB0:
-                handle_equip_rune(session, data)
-            elif pkt == 0x31:
-                handle_gear_packet(session, data)
-            elif pkt == 0x30:
-                handle_update_equipment(session, data)
-            elif pkt == 0xF4:
-                handle_request_armory_gears(session, data, conn)
-            ############################################
-
-            ############################################
+            elif pkt == 0xB1:
+                handle_start_forge(session, data)
             elif pkt == 0xE2:
                 handle_forge_speed_up_packet(session, data)
             elif pkt == 0xD0:
                 handle_collect_forge_charm(session, data)
-            elif pkt == 0xB1:
-                handle_start_forge(session, data)
             elif pkt == 0xE1:
                 handle_cancel_forge(session, data)
             elif pkt == 0x110:
@@ -377,6 +247,7 @@ def handle_client(session: ClientSession):
                 handle_magic_forge_reroll(session, data)
             ############################################
 
+            # talent.py
             ############################################
             elif pkt == 0xD2:
                 handle_respec_talent_tree(session, data)
@@ -390,51 +261,142 @@ def handle_client(session: ClientSession):
                 handle_train_talent_point(session, data)
             elif pkt == 0xDF:
                 handle_clear_talent_research(session, data)
-            ############################################
-
-            # LockBox related packets
-            ###################################
-            elif pkt == 0x107:
-                payload = data[4:]
-                handle_lockbox_reward(session)
-            ###################################
-
-            # Master class related packets
-            ############################################
             elif pkt == 0xC3:
                 handle_active_talent_change_request(session, data)
             ############################################
 
-            # client crash Reports
+            # skills.py
             ############################################
-            elif pkt == 0x7C:
-                Client_Crash_Reports(session, data)
+            elif pkt == 0xD1:
+                handle_skill_trained_claim(session)
+            elif pkt == 0xDD:
+                handle_skill_research_cancel_request(session)
+            elif pkt == 0xDE:
+                handle_skill_speed_up_request(session, data)
+            elif pkt == 0xBE:
+                handle_start_skill_training(session, data, conn)
+            elif pkt == 0xBD:
+                handle_equip_active_skills(session, data)
             ############################################
 
-            # Buildings Upgrade packets
+            # entity.py
             ############################################
-            elif pkt == 0xDB:
-                handle_cancel_building_upgrade(session, data)
-            elif pkt == 0xDC:
-                handle_building_speed_up_request(session, data)
+            elif pkt == 0x08:
+                handle_entity_full_update(session, data, all_sessions)
+            ############################################
+
+            # combat.py
+            ############################################
+            elif pkt == 0x0D:
+                handle_entity_destroy(session, data, all_sessions)
+            elif pkt == 0x79:
+                handle_buff_tick_dot(session, data, all_sessions)
+            elif pkt == 0x82:
+                handle_respawn_broadcast(session, data, all_sessions)
+            elif pkt == 0x77:
+                handle_request_respawn(session, data)
+            elif pkt == 0x0A:
+                handle_power_hit(session, data, all_sessions)
+            elif pkt == 0x0E:
+                handle_projectile_explode(session, data, all_sessions)
+            elif pkt == 0x0B:
+                handle_add_buff(session, data, all_sessions)
+            elif pkt == 0x0C:
+                handle_remove_buff(session, data, all_sessions)
+            elif pkt == 0x8A:
+                handle_change_max_speed(session, data, all_sessions)
+            elif pkt == 0x2A:
+                handle_grant_reward(session, data, all_sessions)
+            elif pkt == 0x09:
+                handle_power_cast(session, data, all_sessions)
+            ############################################
+
+            # buildings.py
+            ############################################
             elif pkt == 0xD7:
                 handle_building_upgrade(session, data)
+            elif pkt == 0xDC:
+                handle_building_speed_up_request(session, data)
+            elif pkt == 0xDB:
+                handle_cancel_building_upgrade(session, data)
             elif pkt == 0xD9:
                 handle_building_claim(session, data)
             ############################################
 
-            # Misc
+            # socials.py
             ############################################
+            elif pkt == 0x95:
+                handle_zone_panel_request(session)
+            elif pkt == 0x2C:
+                handle_public_chat(session, data, all_sessions)
+            elif pkt == 0x46:
+                handle_private_message(session, data, all_sessions)
+            ############################################
+
+
+            # commands.py
+            ############################################
+            elif pkt == 0x19:
+                PaperDoll_Request(session, data, conn)
+            elif pkt == 0x7D:
+                handle_change_offset_y(session, data)
+            elif pkt == 0xA2:
+                handle_linkupdater(session, data)
+            elif pkt == 0xC5:
+                handle_start_skit(session, data, all_sessions)
+            elif pkt == 0x7E:
+                handle_emote_begin(session, data, all_sessions)
+            elif pkt == 0x113:
+                # handle_alert_update(session, data)
+                pass
+            elif pkt == 0x7A:
+                handle_talk_to_npc(session, data, all_sessions)
+            elif pkt == 0x65:
+                handle_group_invite(session, data, all_sessions)
+            elif pkt == 0x8E:
+                handle_change_look(session, data, all_sessions)
+            elif pkt == 0xBA:
+                payload = data[4:]
+                handle_apply_dyes(session, payload, all_sessions)
+            elif pkt == 0xB2:
+                handle_mount_equip_packet(session, data, all_sessions)
+            elif pkt == 0xB3:
+                handle_pet_info_packet(session, data, all_sessions)
+            elif pkt == 0xEA:
+                handle_collect_hatched_egg(session, data)
+            elif pkt == 0xC8:
+                handle_name_gearset(session, data)
+            elif pkt == 0xC7:
+                handle_create_gearset(session, data)
+            elif pkt == 0xC6:
+                handle_apply_gearset(session, data)
+            elif pkt == 0xB0:
+                handle_equip_rune(session, data)
+            elif pkt == 0x31:
+                handle_gear_packet(session, data)
+            elif pkt == 0x30:
+                handle_update_equipment(session, data)
+            elif pkt == 0xF4:
+                handle_request_armory_gears(session, data, conn)
+            elif pkt == 0x107:
+                handle_lockbox_reward(session, data)
+            elif pkt == 0x7C:
+                Client_Crash_Reports(session, data)
             elif pkt == 0x10E:
                 handle_queue_potion(session, data)
-            elif pkt == 0xCC:# Client sends this when a new skill is equipped,actual hotbar update follows in 0xBD.
-                pass
             elif pkt == 0x78:
                 handle_char_regen(session, data)
             elif pkt == 0xF0:
                 handle_volume_enter(session, data)
             elif pkt == 0xBB:
                 handle_hp_increase_notice(session, data)
+            ############################################
+
+            # other
+            ############################################
+            elif pkt == 0xCC:  # Client sends this when a new skill is equipped,actual hotbar update follows in 0xBD.
+                pass
+
             else:
                 print(f"[{session.addr}] Unhandled packet type: 0x{pkt:02X}, raw payload = {data.hex()}")
     except Exception as e:

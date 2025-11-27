@@ -60,79 +60,6 @@ def handle_talk_to_npc(session, data, all_sessions):
     skit_packet = build_start_skit_packet(npc_id, dialogue_id=0, mission_id=0)
     session.conn.sendall(skit_packet)
 
-"""def handle_talk_to_npc(session, data, all_sessions):
-
-    #Handles client packet 0x7A (talk-to-NPC request).
-    #Reads the NPC ID, determines what dialogue/skit should play based on
-    #current missions and NPC role, then sends the start-skit packet
-    #back to the interacting client only.
-
-    payload = data[4:]
-    br = BitReader(payload)
-
-    try:
-        npc_id = br.read_method_9()
-    except Exception as e:
-        print(f"[{session.addr}] [PKT0x7A] Failed to parse NPC ID: {e}")
-        return
-
-    npc = session.entities.get(npc_id)
-    if not npc:
-        print(f"[{session.addr}] [PKT0x7A] Unknown NPC id={npc_id}")
-        return
-
-    npc_name = npc.get("name", f"NPC_{npc_id}")
-
-    # Default values: generic dialogue (no mission involvement)
-    dialogue_id = 0
-    mission_id = 0
-
-    # Get player's mission state
-    char_data = getattr(session, "current_char_dict", None) or {}
-    player_missions = char_data.get("missions", {})
-
-    # Try to match a mission relevant to this NPC
-    for mid_str, mdata in player_missions.items():
-        try:
-            mid = int(mid_str)
-        except (ValueError, TypeError):
-            continue
-
-        mextra = get_mission_extra(mid)
-        if not mextra:
-            continue
-
-        contact_name = (mextra.get("ContactName") or "").strip()
-        return_name = (mextra.get("ReturnName") or "").strip()
-        state = mdata.get("state", 2)
-
-        if npc_name == contact_name:
-            if state == 0:
-                dialogue_id = 2  # OfferText
-                mission_id = 0  # not yet acquired — do not send mission ID
-            elif state == 1:
-                dialogue_id = 3  # ActiveText
-                mission_id = mid
-            elif state == 2:
-                dialogue_id = 5  # PraiseText
-                mission_id = mid
-
-        elif npc_name == return_name or state == 2:
-            if state == 1:
-                dialogue_id = 4
-            elif state == 2:
-                dialogue_id = 5
-            mission_id = mid
-            break
-    # Build and send the start skit packet only to this client
-    pkt = build_start_skit_packet(npc_id, dialogue_id, mission_id)
-    session.conn.sendall(pkt)
-    print(
-        f"[{session.addr}] [PKT0x7A] Talked to NPC ID: {npc_id} ({npc_name}) → "
-        f"sent skit (dialogue_id={dialogue_id}, mission_id={mission_id})"
-    )
-"""
-
 #TODO...
 def handle_collect_hatched_egg(conn, char):
       pass
@@ -174,7 +101,8 @@ def build_loot_drop_packet(entity_id: int, x: int, y: int,
     header  = struct.pack('>HH', 0x32, len(payload))
     return header + payload
 
-def handle_lockbox_reward(session):
+def handle_lockbox_reward(session, data):
+    _=data[4:]
     CAT_BITS = 3
     ID_BITS = 6
     PACK_ID = 1

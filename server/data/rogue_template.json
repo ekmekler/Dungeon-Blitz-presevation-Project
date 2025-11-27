@@ -8626,43 +8626,23 @@
     "friends": [
         {
             "name": "Neutral",
-            "className": "Paladin",
-            "level": 40,
-            "stateVersion": 5,
-            "isRequest": true,
-            "isOnline": true
+            "isRequest": true
         },
         {
             "name": "Neo",
-            "className": "Mage",
-            "level": 20,
-            "stateVersion": 5,
-            "isRequest": true,
-            "isOnline": true
+            "isRequest": true
         },
         {
             "name": "Tired",
-            "className": "Rogue",
-            "level": 23,
-            "stateVersion": 5,
-            "isRequest": false,
-            "isOnline": true
+            "isRequest": false
         },
         {
             "name": "Telahair",
-            "className": "Mage",
-            "level": 23,
-            "stateVersion": 5,
-            "isRequest": false,
-            "isOnline": false
+            "isRequest": false
         },
         {
             "name": "twig",
-            "className": "Rogue",
-            "level": 50,
-            "stateVersion": 5,
-            "isRequest": false,
-            "isOnline": true
+            "isRequest": false
         }
     ],
     "learnedAbilities": [
