@@ -346,9 +346,6 @@ def handle_client(session: ClientSession):
                 handle_start_skit(session, data, all_sessions)
             elif pkt == 0x7E:
                 handle_emote_begin(session, data, all_sessions)
-            elif pkt == 0x113:
-                # handle_alert_update(session, data)
-                pass
             elif pkt == 0x7A:
                 handle_talk_to_npc(session, data, all_sessions)
             elif pkt == 0x65:
@@ -356,8 +353,7 @@ def handle_client(session: ClientSession):
             elif pkt == 0x8E:
                 handle_change_look(session, data, all_sessions)
             elif pkt == 0xBA:
-                payload = data[4:]
-                handle_apply_dyes(session, payload, all_sessions)
+                handle_apply_dyes(session, data, all_sessions)
             elif pkt == 0xB2:
                 handle_mount_equip_packet(session, data, all_sessions)
             elif pkt == 0xB3:

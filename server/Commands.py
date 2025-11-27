@@ -640,8 +640,8 @@ def handle_change_offset_y(session, data):
 #handled
 #############################################
 
-def handle_apply_dyes(session, payload, all_sessions):
-    br = BitReader(payload)
+def handle_apply_dyes(session, data, all_sessions):
+    br = BitReader(data[4:])
     try:
         entity_id = br.read_method_4()
         dyes_by_slot = {}
