@@ -6,7 +6,7 @@ import threading
 import time
 
 from PolicyServer import start_policy_server
-from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, extended_sent_map, HOST, PORTS, Client_Crash_Reports
+from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, extended_sent_map, HOST, PORTS, Client_Crash_Reports, handle_entity_destroy_server
 from scheduler import set_active_session_resolver
 from static_server import start_static_server
 from Character import save_characters
@@ -139,12 +139,17 @@ class ClientSession:
         )
 
     def close_connection(self):
+
+        self.save_player_position()
+
+        if self.player_spawned and self.clientEntID is not None:
+            handle_entity_destroy_server(self, self.clientEntID, all_sessions=all_sessions)
+            print(f"destroyed enity removal")
+
         try:
             self.conn.close()
         except:
             pass
-
-        self.save_player_position()
 
         s = session_by_token.get(self.clientEntID)
         if s:

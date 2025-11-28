@@ -115,26 +115,27 @@ def _send_error(conn, msg):
     payload = struct.pack(">H", len(encoded)) + encoded
     conn.sendall(struct.pack(">HH", 0x44, len(payload)) + payload)
 
-def build_destroy_entity_packet(entity_id: int, is_player: bool = True) -> bytes:
+def build_destroy_entity_packet(entity_id: int) -> bytes:
     bb = BitBuffer()
-    bb.write_method_4(entity_id)
-    bb.write_method_15(is_player)
+    bb.write_method_4(entity_id)  # Entity ID
+    bb.write_method_15(False) # Boolean (1 bit) - client currently ignores this
     payload = bb.to_bytes()
     return struct.pack(">HH", 0x0D, len(payload)) + payload
 
-def handle_entity_destroy_server(session, entity_id: int, is_player: bool, all_sessions: list):
-    if session.entities.pop(entity_id, None) is None:
-        print(f"[WARN] Tried to destroy unknown entity {entity_id}")
+def handle_entity_destroy_server(session, entity_id: int, all_sessions: list):
+    # Remove locally
+    session.entities.pop(entity_id, None)
 
-    pkt = build_destroy_entity_packet(entity_id, is_player)
+    # Build packet once
+    pkt = build_destroy_entity_packet(entity_id)
+
+    # Send to everyone in same level
     for s in all_sessions:
         if s.player_spawned and s.current_level == session.current_level:
-            try:
-                s.conn.sendall(pkt)
-            except Exception:
-                pass
+            s.conn.sendall(pkt)
 
-    print(f"[EntityDestroy] Entity {entity_id} destroyed (is_player={is_player}) in level {session.current_level}")
+    print(f"[EntityDestroy] Entity {entity_id} destroyed")
+
 
 def send_forge_reroll_packet(
     session,
