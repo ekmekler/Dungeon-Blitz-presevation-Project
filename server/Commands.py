@@ -819,53 +819,6 @@ def PaperDoll_Request(session, data, conn):
         #print(f"[{session.addr}] [PKT0x19] Character '{name}' not found. Sent empty paperdoll.")
 
 
-def handle_mount_equip_packet(session, data, all_sessions):
-    """
-    Handle packet type 0xB2 for equipping a mount on an entity.
-    Parses the payload to extract Entity ID and Mount ID, prints them,
-    and updates the character's equipped mount.
-    """
-
-    payload = data[4:]
-    reader = BitReader(payload, debug=True)
-
-    try:
-        # Read Entity ID (method_4)
-        entity_id = reader.read_method_4()
-        # Read Mount ID (7 bits, as per class_20.const_297)
-        mount_id = reader.read_method_6(7)
-
-        print(f"[{session.addr}] [PKT0xB2] Entity ID: {entity_id}, Mount ID: {mount_id}")
-
-        # Validate and update character's equipped mount
-        for char in session.char_list:
-            if char.get("name") == session.current_character:
-                # Check if the mount is owned
-                owned_mounts = char.get("mounts", [])
-                if mount_id not in owned_mounts and mount_id != 0:  # 0 might mean unequip
-                    print(f"[{session.addr}] [PKT0xB2] Invalid mount ID {mount_id} for {session.current_character}")
-                    return
-                # Update equipped mount
-                char["equippedMount"] = mount_id
-                session.player_data["characters"] = session.char_list
-                save_characters(session.user_id, session.char_list)
-                print(f"[{session.addr}] [PKT0xB2] Equipped mount ID {mount_id} for {session.current_character}")
-                break
-        else:
-            print(f"[{session.addr}] [WARNING] Character {session.current_character} not found for PKT0xB2")
-
-        # Broadcast to other sessions (optional, based on game design)
-        for other in all_sessions:
-            if other is not session and other.player_spawned and other.current_level == session.current_level:
-                other.conn.sendall(data)
-                print(f"[{session.addr}] [PKT0xB2] Broadcasted mount update to {other.addr}")
-
-    except Exception as e:
-        print(f"[{session.addr}] [PKT0xB2] Error parsing packet: {e}")
-        for line in reader.get_debug_log():
-            print(line)
-
-
 def handle_group_invite(session, data, all_sessions):
     """
     Packet 0x65: /invite <player>

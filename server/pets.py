@@ -1,5 +1,7 @@
 from Character import save_characters
 from bitreader import BitReader
+from constants import class_20
+
 
 def handle_equip_pets(session, data, all_sessions):
     reader = BitReader(data[4:])
@@ -30,3 +32,24 @@ def handle_equip_pets(session, data, all_sessions):
 
         save_characters(session.user_id, session.char_list)
         break
+
+
+def handle_mount_equip_packet(session, data, all_sessions):
+    reader = BitReader(data[4:])
+    entity_id = reader.read_method_4()
+    mount_id  = reader.read_method_6(class_20.const_297)
+
+    char = next((c for c in session.char_list
+                 if c.get("name") == session.current_character), None)
+
+    char["equippedMount"] = mount_id
+    session.player_data["characters"] = session.char_list
+    save_characters(session.user_id, session.char_list)
+
+    for other in all_sessions:
+        if (
+            other is not session
+            and other.player_spawned
+            and other.current_level == session.current_level
+        ):
+            other.conn.sendall(data)
