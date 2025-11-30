@@ -1015,35 +1015,4 @@ def handle_linkupdater(session, data):
     #print(f"Player [{get_active_character_name(session)}]")
     #pprint.pprint(props, indent=4)
 
-def handle_start_skit(session, data, all_sessions):
-    """
-    Handle packet 0xC5: Client requests to start or stop a skit for an entity.
-    - Reads entity ID, boolean flag, and text.
-    - Sends PKT_ROOM_THOUGHT (0x76) only if flag is True.
-    """
-    payload = data[4:]
-    br = BitReader(payload, debug=True)
-    try:
-        entity_id = br.read_method_9()
-        flag = bool(br.read_method_15())
-        text = br.read_method_26()
-    except Exception as e:
-        print(f"[{session.addr}] [PKT0xC5] Error parsing packet: {e}")
-        return
-
-    if flag:
-        bb = BitBuffer()
-        bb.write_method_4(entity_id)
-        bb.write_method_13(text)
-        payload = bb.to_bytes()
-        packet = struct.pack(">HH", 0x76, len(payload)) + payload
-
-        for other_session in all_sessions:
-            if other_session.player_spawned and other_session.current_level == session.current_level:
-                other_session.conn.sendall(packet)
-
-        print(f"[{session.addr}] [PKT0xC5] Sent skit message from entity {entity_id}: '{text}'")
-    else:
-        print(f"[{session.addr}] [PKT0xC5] Skit flag is False for entity {entity_id}, message suppressed")
-
 

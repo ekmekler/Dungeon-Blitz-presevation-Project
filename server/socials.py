@@ -165,3 +165,21 @@ def handle_room_thought(session, data, all_sessions):
                 s.conn.sendall(pkt)
             except:
                 pass
+
+def handle_start_skit(session, data, all_sessions):
+    br = BitReader(data[4:])
+
+    entity_id = br.read_method_9()
+    is_chat_message = bool(br.read_method_15()) # if "True" message will also show in the players chat
+    text = br.read_method_26()
+
+    pkt = build_room_thought_packet(entity_id, text)
+
+    for other in all_sessions:
+        if other.player_spawned and other.current_level == session.current_level:
+            try:
+                other.conn.sendall(pkt)
+            except:
+                pass
+
+    print(f"[SKIT] Entity {entity_id} says: '{text}'")
