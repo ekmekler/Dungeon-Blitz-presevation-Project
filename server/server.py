@@ -378,8 +378,6 @@ def handle_client(session: ClientSession):
                 handle_change_look(session, data, all_sessions)
             elif pkt == 0xBA:
                 handle_apply_dyes(session, data, all_sessions)
-            elif pkt == 0xB2:
-                handle_mount_equip_packet(session, data, all_sessions)
             elif pkt == 0xEA:
                 handle_collect_hatched_egg(session, data)
             elif pkt == 0xC8:
