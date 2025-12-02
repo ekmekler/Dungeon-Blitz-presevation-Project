@@ -290,8 +290,10 @@ def handle_gameserver_login(session, data, conn):
     # Store token mapping (needed by client for entType etc.)
     used_tokens[token] = (char, target_level, previous_level)
 
-    # Build and send Player_Data
-    send_ext = not extended_sent_map.get(session.user_id, {}).get("sent", False)
+    last = extended_sent_map.get(session.user_id)
+    send_ext = (last is None)
+
+    extended_sent_map[session.user_id] = time.time() 
 
     #TODO...
     level_config = LEVEL_CONFIG.get(target_level, ("", 1, 1, False))
@@ -309,7 +311,6 @@ def handle_gameserver_login(session, data, conn):
         send_extended=send_ext,
     )
 
-    extended_sent_map[session.user_id] = {"sent": True, "last_seen": time.time()}
     conn.sendall(welcome)
 
     print(f"[{session.addr}] Welcome: {char['name']} (token {token})")

@@ -126,7 +126,6 @@ def Player_Data_Packet(char: dict,
     # do not send the extended data when the player is transferring to another level
     # because the game saves it in memory sending a second time will cause inventory items to duplicate
     if send_extended:
-        #print("[DEBUG] Sending extended data block")
         buf.write_method_6(1, 1)
 
     # ──────────────(Extended data block)──────────────

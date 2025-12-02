@@ -6,7 +6,8 @@ import threading
 import time
 
 from PolicyServer import start_policy_server
-from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, extended_sent_map, HOST, PORTS, Client_Crash_Reports, handle_entity_destroy_server
+from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, extended_sent_map, HOST, \
+    PORTS, Client_Crash_Reports, handle_entity_destroy_server, pending_world
 from scheduler import set_active_session_resolver
 from static_server import start_static_server
 from Character import save_characters
@@ -150,7 +151,7 @@ class ClientSession:
 
         if self.player_spawned and self.clientEntID is not None:
             handle_entity_destroy_server(self, self.clientEntID, all_sessions=all_sessions)
-            print(f"destroyed enity removal")
+            print("destroyed entity removal")
 
         try:
             self.conn.close()
@@ -161,7 +162,6 @@ class ClientSession:
         if s:
             s.running = False
 
-        # Only remove from level if fully loaded in
         if self.player_spawned and self.current_level:
             _level_remove(self.current_level, self)
 
@@ -169,15 +169,31 @@ class ClientSession:
             all_sessions.remove(self)
 
         if self.user_id in extended_sent_map:
-            extended_sent_map[self.user_id]["last_seen"] = time.time()
+            extended_sent_map[self.user_id] = time.time()
 
 
-def prune_extended_sent_map(timeout: int = 2):
+def prune_extended_sent_map(timeout: int = 5):
     now = time.time()
-    for uid, data in list(extended_sent_map.items()):
-        if now - data.get("last_seen", now) > timeout:
+
+    for uid, last_sent in list(extended_sent_map.items()):
+
+        # Is the player connected via session?
+        has_session = any(
+            s.user_id == uid and s.running
+            for s in all_sessions
+        )
+
+        # Is the player in a level-transfer handshake?
+        has_pending_token = any(
+            token_info[0] == uid for token_info in pending_world.values()
+        )
+
+        if has_session or has_pending_token:
+            continue
+
+        if now - last_sent > timeout:
             extended_sent_map.pop(uid, None)
-            print(f"[DEBUG] Cleared extended_sent_map for user_id={uid} (timeout expired)")
+            print(f"[DEBUG] Cleared extended_sent_map[{uid}] (fully offline, timeout expired)")
 
 def read_exact(conn, n):
     buf = b""
@@ -193,7 +209,7 @@ def handle_client(session: ClientSession):
     addr = session.addr
     print("Connected:", addr)
     conn.settimeout(300)
-    prune_extended_sent_map(timeout=2)
+    prune_extended_sent_map(timeout=10)
     buffer = bytearray()
     try:
         while True:
