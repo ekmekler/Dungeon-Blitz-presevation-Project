@@ -239,10 +239,8 @@ def Player_Data_Packet(char: dict,
         buf.write_method_4(char.get("DragonKeys", 0))
         buf.write_method_4(char.get("SilverSigils", 0))
 
-        # this just effects the tutorial tips value 0 will show the "Dyeing Gear available" tip although
-        # im not exactly  sure if this is working correctly
-        # we got 0-15 possible values
-        buf.write_method_6(5, Game.const_646)
+        alert_state = char.get("alertState", 0)
+        buf.write_method_6(alert_state, Game.const_646)
 
         # ──────────────(dyes)──────────────
         owned_dyes = set(char.get("OwnedDyes", []))

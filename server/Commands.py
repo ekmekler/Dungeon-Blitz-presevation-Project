@@ -18,11 +18,16 @@ def handle_queue_potion(session, data):
     queued_potion_id = br.read_method_20(class_3.const_69)
     #print(f"queued potion ID : {queued_potion_id}")
 
-#TODO...
 def handle_alert_state_update(session, data):
     br = BitReader(data[4:])
     state_id = br.read_method_20(Game.const_646)
-    #print(f"state_id : {state_id}")
+    char = session.current_char_dict
+
+    old = char.get("alertState", 0)
+    new = old | state_id
+    char["alertState"] = new
+
+    save_characters(session.user_id, session.char_list)
 
 def handle_request_armory_gears(session, data, conn):
     payload = data
