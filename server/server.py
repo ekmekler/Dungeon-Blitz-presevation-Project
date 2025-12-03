@@ -10,7 +10,7 @@ from globals import level_registry, session_by_token, all_sessions, char_tokens,
     PORTS, Client_Crash_Reports, handle_entity_destroy_server, pending_world
 from scheduler import set_active_session_resolver
 from static_server import start_static_server
-from Character import save_characters, handle_request_armory_gears, handle_alert_state_update
+from Character import save_characters, handle_request_armory_gears, handle_alert_state_update, PaperDoll_Request
 
 from login import handle_login_version, handle_login_create, handle_login_authenticate, handle_login_character_create, handle_character_select, handle_gameserver_login
 from level_config import handle_open_door, handle_level_transfer_request, handle_request_door_state, LEVEL_CONFIG, handle_entity_incremental_update
@@ -28,7 +28,7 @@ from socials import handle_zone_panel_request, handle_public_chat, handle_privat
 from pets import handle_equip_pets, handle_mount_equip_packet
 from Commands import handle_gear_packet, handle_apply_dyes, handle_equip_rune, handle_change_look, \
     handle_create_gearset, handle_name_gearset, \
-    handle_apply_gearset, handle_update_equipment, PaperDoll_Request, handle_hp_increase_notice, handle_volume_enter, \
+    handle_apply_gearset, handle_update_equipment, handle_hp_increase_notice, handle_volume_enter, \
     handle_lockbox_reward, handle_linkupdater, handle_collect_hatched_egg, handle_talk_to_npc, handle_char_regen, \
     handle_queue_potion
 

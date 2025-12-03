@@ -2,7 +2,7 @@ import json, struct
 import random
 import time
 
-from Character import save_characters, build_paperdoll_packet, SAVE_PATH_TEMPLATE
+from Character import save_characters, SAVE_PATH_TEMPLATE
 from bitreader import BitReader
 from constants import GearType, EntType, class_64, class_1, DyeType, Entity, class_3
 from BitBuffer import BitBuffer
@@ -846,26 +846,6 @@ def send_dye_sync_packet(session, entity_id, dyes_by_slot, shirt_color=None, pan
         pkt = struct.pack(">HH", 0x111, len(payload)) + payload
         session.conn.sendall(pkt)
         print(f"[Sync] Sent dye update (0x111) to client for entity {entity_id}")
-
-def PaperDoll_Request(session, data, conn):
-    """
-    Handles paperdoll request (0x19). Reads character name,
-    finds the character in session.char_list, and sends back
-    a 0x1A response with their paperdoll or empty if not found.
-    """
-    name = BitReader(data[4:]).read_method_26()
-    #print(f"[{session.addr}] [PKT0x19] Request for paperdoll: {name}")
-
-    for c in session.char_list:
-        if c["name"] == name:
-            pd = build_paperdoll_packet(c)
-            conn.sendall(struct.pack(">HH", 0x1A, len(pd)) + pd)
-            #print(f"[{session.addr}] [PKT0x19] Found and sent paperdoll for '{name}'")
-            break
-    else:
-        # Character not found, send empty packet
-        conn.sendall(struct.pack(">HH", 0x1A, 0))
-        #print(f"[{session.addr}] [PKT0x19] Character '{name}' not found. Sent empty paperdoll.")
 
 
 #TODO...

@@ -110,41 +110,48 @@ def save_characters(user_id: str, char_list: list[dict]):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def build_paperdoll_packet(character_dict):
-    buf = BitBuffer(debug=True)  # Enable debug for tracing
-    buf.write_method_13(character_dict["name"])
-    buf.write_method_13(character_dict["class"])
-    buf.write_method_13(character_dict["gender"])
-    buf.write_method_13(character_dict["headSet"])
-    buf.write_method_13(character_dict["hairSet"])
-    buf.write_method_13(character_dict["mouthSet"])
-    buf.write_method_13(character_dict["faceSet"])
-    buf.write_method_6(character_dict["hairColor"], 24)
-    buf.write_method_6(character_dict["skinColor"], 24)
-    buf.write_method_6(character_dict["shirtColor"], 24)
-    buf.write_method_6(character_dict["pantColor"], 24)
+def build_paperdoll_packet(char):
+    buf = BitBuffer()
 
-    # Add gear slots (slots 1 to 6, as slot 0 is skipped)
-    cls = character_dict["class"].lower()
-    # Prefer equippedGears if available, else fall back to DEFAULT_GEAR
-    gear_list = character_dict.get("equippedGears", DEFAULT_GEAR.get(cls, [[0] * 6] * 6))
+    # Basic appearance fields
+    for key in ("name", "class", "gender", "headSet", "hairSet", "mouthSet", "faceSet"):
+        buf.write_method_13(char.get(key, ""))
 
-    for i in range(6):  # Process exactly 6 slots (1 to 6)
+    # Colors (24-bit each)
+    for key in ("hairColor", "skinColor", "shirtColor", "pantColor"):
+        buf.write_method_6(int(char.get(key, 0)), 24)
+
+    # Build 6 gear slots
+    cls = char.get("class", "").lower()
+    gear_list = char.get("equippedGears", DEFAULT_GEAR.get(cls, []))
+
+    for i in range(6):
+        gear_id = 0
         if i < len(gear_list):
             slot = gear_list[i]
-            # Handle both dictionary (equippedGears) and list (DEFAULT_GEAR) formats
+
             if isinstance(slot, dict):
-                gear_id = slot.get("gearID", 0)
-            elif isinstance(slot, (list, tuple)) and len(slot) > 0:
-                gear_id = slot[0]
-            else:
-                gear_id = 0
-        else:
-            gear_id = 0
-        buf.write_method_6(gear_id, 11)  # GearType.GEARTYPE_BITSTOSEND = 11
-        if buf.debug:
-            buf.debug_log.append(f"gear_slot_{i + 1}_gearID={gear_id}")
+                gear_id = int(slot.get("gearID", 0))
+            elif isinstance(slot, (list, tuple)):
+                gear_id = int(slot[0]) if slot else 0
+
+        buf.write_method_6(gear_id, GEARTYPE_BITS)
+
     return buf.to_bytes()
+
+
+def PaperDoll_Request(session, data, conn):
+    br = BitReader(data[4:])
+    req_name = br.read_method_26()
+
+    char = next((c for c in session.char_list if c["name"] == req_name), None)
+
+    if char:
+        payload = build_paperdoll_packet(char)
+        conn.sendall(struct.pack(">HH", 0x1A, len(payload)) + payload)
+    else:
+        conn.sendall(struct.pack(">HH", 0x1A, 0))
+        print(f"[0x19] Character '{req_name}' not found; sent empty 0x1A")
 
 def build_login_character_list_bitpacked(characters):
     """
