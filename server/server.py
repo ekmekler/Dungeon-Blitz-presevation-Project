@@ -415,6 +415,8 @@ def handle_client(session: ClientSession):
 
             # commands.py
             ############################################
+            elif pkt == 0x100:
+                 handle_char_regen(session, data)
             elif pkt == 0x8D:
                 handle_badge_request(session, data, conn)
             elif pkt == 0xA2:
