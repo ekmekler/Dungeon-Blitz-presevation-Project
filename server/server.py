@@ -405,6 +405,12 @@ def handle_client(session: ClientSession):
                 handle_alert_state_update(session, data)
             ############################################
 
+            # globals.py
+            ############################################
+            elif pkt == 0x7C:
+                Client_Crash_Reports(session, data)
+            ############################################
+
             # commands.py
             ############################################
             elif pkt == 0x19:
@@ -433,8 +439,6 @@ def handle_client(session: ClientSession):
                 handle_update_equipment(session, data)
             elif pkt == 0x107:
                 handle_lockbox_reward(session, data)
-            elif pkt == 0x7C:
-                Client_Crash_Reports(session, data)
             elif pkt == 0x10E:
                 handle_queue_potion(session, data)
             elif pkt == 0x78:
