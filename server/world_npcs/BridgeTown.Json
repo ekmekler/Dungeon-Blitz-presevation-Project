@@ -1,45 +1,34 @@
 [
-
-      {
-      "id": 99,
-      "name": "NPCTraveller",
-      "x": 11241,
-      "y": 2199,
-      "v": 0,
-      "team": 3,
-      "untargetable": false,
-      "render_depth_offset": -15,
-      "behavior_speed": 0.0,
-      "Linked_Mission": "NPCTraveller",
-      "DramaAnim": "",
-      "SleepAnim": "",
-      "summonerId": 0,
-      "power_id": 0,
-      "entState": 0,
-      "facing_left": true,
-      "health_delta": 0,
-      "buffs": []
-    },
   {
-      "id": 100,
-      "name": "LizardWarrior2",
-      "x": 12289,
-      "y": 2199,
-      "v": 0,
-      "team": 2,
-      "untargetable": false,
-      "render_depth_offset": -15,
-      "behavior_speed": 0.0,
-      "Linked_Mission": "",
-      "DramaAnim": "",
-      "SleepAnim": "",
-      "summonerId": 0,
-      "power_id": 3,
-      "entState": 0,
-      "facing_left": true,
-      "health_delta": 0,
-      "buffs": []
-    }
-
-
+    "id": 99,
+    "name": "NPCTraveller",
+    "x": 11241,
+    "y": 2199,
+    "v": 0,
+    "team": 3,
+    "entState": 0,
+    "untargetable": false,
+    "render_depth_offset": -15,
+    "Linked_Mission": "NPCTraveller",
+    "DramaAnim": "",
+    "SleepAnim": "",
+    "facing_left": true,
+    "health_delta": 0
+  },
+  {
+    "id": 100,
+    "name": "LizardWarrior2",
+    "x": 12289,
+    "y": 2199,
+    "v": 0,
+    "team": 2,
+    "entState": 0,
+    "untargetable": false,
+    "render_depth_offset": -15,
+    "Linked_Mission": "",
+    "DramaAnim": "",
+    "SleepAnim": "",
+    "facing_left": true,
+    "health_delta": 0
+  }
 ]
