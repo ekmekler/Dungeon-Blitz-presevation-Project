@@ -394,75 +394,89 @@ def handle_level_transfer_request(session, data, conn):
         f"for {target_level} → pos=({new_x},{new_y})"
     )
 
-def handle_request_door_state(session, data, conn):
-    missions.load_mission_defs()# make sure mission defs are loaded
-
-    if len(data) < 4:
-        return
-
-    payload_length = struct.unpack(">H", data[2:4])[0]
-    if len(data) != 4 + payload_length:
-        return
-
-    payload = data[4:4 + payload_length]
-
-    br = BitReader(payload)
-    door_id = br.read_method_9()
-
-    door_state = door.DOORSTATE_CLOSED
-    door_target = ""
-    star_rating = None
-
-    door_info = DOOR_MAP.get((session.current_level, door_id))
-    char = next((c for c in session.char_list if c.get("name") == session.current_character), None)
-
-    if door_info and isinstance(door_info, str):
-        # Determine the mission ID
-        if door_info.startswith("mission:"):
-            try:
-                mission_id = int(door_info.split(":", 1)[1])
-            except Exception:
-                mission_id = None
-        else:
-            # Check if this static-looking door corresponds to a dungeon in mission defs
-            mission_id = next(
-                (m["id"] for m in missions._MISSION_DEFS_BY_ID.values() if m.get("Dungeon") == door_info),
-                None
-            )
-
-        if char and mission_id is not None:
-            # Get saved mission state from the character
-            mission_data = char.get("missions", {}).get(str(mission_id), {})
-            if mission_data.get("state") == 2:
-                door_state = door.DOORSTATE_MISSIONREPEAT
-                star_rating = mission_data.get("Tier", 0)
-            else:
-                door_state = door.DOORSTATE_MISSION
-            door_target = door_info
-        else:
-            # Fallback if no mission or char
-            door_state = door.DOORSTATE_STATIC
-            door_target = door_info
-    else:
-        # Fallback for non-string or missing door_info
-        door_state = door.DOORSTATE_STATIC
-        door_target = ""
-
-    # Build and send the reply
+def send_door_state(conn, door_id, door_state, door_target, star_rating=None):
     bb = BitBuffer()
     bb.write_method_4(door_id)
     bb.write_method_91(door_state)
-    bb.write_method_13(door_target)
+    bb.write_method_13(door_target or "")
+
+    # Only mission-repeat doors send star/tier rating
     if door_state == door.DOORSTATE_MISSIONREPEAT and star_rating is not None:
         bb.write_method_6(star_rating, class_119.const_228)
 
-    #print(f"[DEBUG] Door request: level={session.current_level}, id={door_id}, "
-          #f"info={door_info}, state={door_state}, target='{door_target}'")
-
     payload = bb.to_bytes()
-    response = struct.pack(">HH", 0x42, len(payload)) + payload
+    pkt = struct.pack(">HH", 0x42, len(payload)) + payload
+    conn.sendall(pkt)
 
-    conn.sendall(response)
+def handle_request_door_state(session, data, conn):
+    br = BitReader(data[4:])
+    door_id = br.read_method_9()
+
+    entry = DOOR_MAP.get((session.current_level, door_id))
+    char = session.current_char_dict
+
+    #Unknown door
+    if not entry:
+        send_door_state(conn, door_id, door.DOORSTATE_STATIC, "")
+        return
+
+    # Default values
+    door_state = door.DOORSTATE_STATIC
+    door_target = ""
+    star_rating = None
+
+    # Mission door: "mission:ID"
+    if isinstance(entry, str) and entry.startswith("mission:"):
+        mission_id = int(entry.split(":")[1])
+        m = char.get("missions", {}).get(str(mission_id), {})
+        state = m.get("state", 0)
+
+        if state == 2:  # completed
+            door_state = door.DOORSTATE_MISSIONREPEAT
+            star_rating = m.get("Tier", 0)
+        else:
+            door_state = door.DOORSTATE_MISSION
+
+        door_target = entry
+
+    # Level / Dungeon door
+    elif isinstance(entry, str):
+        target_level = entry
+
+        if is_dungeon_level(target_level):
+            min_lvl = LEVEL_CONFIG[target_level][1]
+            player_lvl = char.get("level", 1)
+
+            if player_lvl < min_lvl:
+                door_state = door.DOORSTATE_LOCKED
+
+            else:
+                completed = False
+                star = 0
+
+                for mid, m in char.get("missions", {}).items():
+                    mdef = missions._MISSION_DEFS_BY_ID.get(int(mid))
+                    if mdef and mdef.get("Dungeon") == target_level:
+                        if m.get("state") == 2:
+                            completed = True
+                            star = m.get("Tier", 0)
+                        break
+
+                if completed:
+                    door_state = door.DOORSTATE_MISSIONREPEAT
+                    star_rating = star  # send the tier here
+                else:
+                    door_state = door.DOORSTATE_MISSION
+
+            door_target = target_level
+
+        else:
+            # Normal overworld door → static
+            door_state = door.DOORSTATE_STATIC
+            door_target = target_level
+
+    send_door_state(conn, door_id, door_state, door_target, star_rating)
+
 
 def handle_entity_incremental_update(session, data, all_sessions):
     payload = data[4:]
