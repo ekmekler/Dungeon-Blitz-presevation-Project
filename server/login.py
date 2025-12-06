@@ -21,12 +21,6 @@ def handle_login_version(session, data, conn):
     br = BitReader(data[4:])
     client_version = br.read_method_9()
 
-    if client_version != 100:
-        print(f"[{session.addr}] Unsupported client version: {client_version}")
-        return
-
-    print(f"[{session.addr}] Client version OK: {client_version}")
-
     sid = secrets.randbelow(1 << 16)
     sid_bytes = sid.to_bytes(2, "big")
     digest = hashlib.md5(sid_bytes + SECRET).hexdigest()[:12]
@@ -307,8 +301,9 @@ def handle_gameserver_login(session, data, conn):
     extended_sent_map[session.user_id] = time.time() 
 
     #TODO...
-    level_config = LEVEL_CONFIG.get(target_level, ("", 1, 1, False))
-    bonus_levels = level_config[2]
+    #level_config = LEVEL_CONFIG.get(target_level, ("", 1, 1, False))
+    #bonus_levels = level_config[2]
+    bonus_levels = 0
 
     welcome = Player_Data_Packet(
         char,
