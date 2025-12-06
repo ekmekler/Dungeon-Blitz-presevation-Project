@@ -141,7 +141,7 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
 
     bb.write_signed_method_45(int(entity['x']))  # x
     bb.write_signed_method_45(int(entity['y']))  # y
-    bb.write_signed_method_45(int(entity['v']))  # Velocity
+    bb.write_signed_method_45(int(entity.get('v', 0)))  # Velocity
 
     bb.write_method_6(entity.get('team', 0), Entity.TEAM_BITS)
 
