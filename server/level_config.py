@@ -18,6 +18,11 @@ def resolve_special_mission_doors(char: dict, current_level: str, target_level: 
         m = missions.get(str(mid))
         return m.get("state", 0) if m else 0
 
+    if target_level == "CraftTown":
+        # Mission 5: "I claim this keep"
+        if get_state(5) != 2:
+            return "CraftTownTutorial"
+
     if current_level == "SwampRoadNorth" and target_level == "SwampRoadConnectionMission":
         if get_state(23) == 2:
             return "SwampRoadConnection"
