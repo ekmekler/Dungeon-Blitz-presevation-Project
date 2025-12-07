@@ -1,8 +1,9 @@
+import random
 import struct
-from time import sleep
+import time
 
 from BitBuffer import BitBuffer
-from constants import class_3, class_1, class_64, class_111, class_66, GearType
+from constants import class_3, class_1, class_64, class_111, class_66, GearType, EGG_TYPES, class_16
 
 HOST = "127.0.0.1"
 PORTS = [8080]# Developer mode Port : 7498
@@ -248,3 +249,37 @@ def send_gear_reward(session, gear_id, tier=0, has_mods=False):
     payload = bb.to_bytes()
     pkt = struct.pack(">HH", 0x33, len(payload)) + payload
     session.conn.sendall(pkt)
+
+
+def build_hatchery_packet(eggs: list[int], reset_time: int):
+    bb = BitBuffer()
+
+    # Count
+    bb.write_method_6(len(eggs), class_16.const_167)
+
+    # Egg IDs
+    for eid in eggs:
+        bb.write_method_6(eid, class_16.const_167)
+
+    # Reset timestamp
+    bb.write_method_4(reset_time)
+
+    payload = bb.to_bytes()
+    return struct.pack(">HH", 0xE5, len(payload)) + payload
+
+
+def build_hatchery_notify_packet():
+    return struct.pack(">HH", 0xFF, 0)
+
+
+def pick_daily_eggs(count=3):
+    """
+    Picks 'count' random eggs from EGG_TYPES.
+    """
+    valid = [e for e in EGG_TYPES if e.get("EggID", 0) > 0]
+
+    if len(valid) < count:
+        return [e["EggID"] for e in valid]
+
+    chosen = random.sample(valid, count)
+    return [e["EggID"] for e in chosen]

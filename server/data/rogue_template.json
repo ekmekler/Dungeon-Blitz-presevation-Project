@@ -8866,13 +8866,10 @@
     "OwnedEggsID": [
         1,
         2,
-        30,
-        27,
-        5,
-        35,
-        20,
-        17
+        30
     ],
+    "EggNotifySent": false,
+    "EggResetTime": 1765074372,
     "activeEggCount": 5,
     "restingPets": [
         {

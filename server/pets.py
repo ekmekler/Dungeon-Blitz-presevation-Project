@@ -1,6 +1,9 @@
+import time
+
 from Character import save_characters
 from bitreader import BitReader
 from constants import class_20
+from globals import build_hatchery_packet, pick_daily_eggs
 
 
 def handle_equip_pets(session, data, all_sessions):
@@ -53,3 +56,41 @@ def handle_mount_equip_packet(session, data, all_sessions):
             and other.current_level == session.current_level
         ):
             other.conn.sendall(data)
+
+
+def handle_request_hatchery_eggs(session, data):
+    char = session.current_char_dict
+    now = int(time.time())
+
+    owned = char.get("OwnedEggsID", [])
+    reset_time = char.get("EggResetTime", 0)
+
+    # daily refresh check
+    if now >= reset_time:
+        max_slots = 8
+        open_slots = max_slots - len(owned)
+
+        added_eggs = []
+
+        if open_slots > 0:
+            new_egg_count = min(open_slots, 3)
+            added_eggs = pick_daily_eggs(count=new_egg_count)
+
+            owned.extend(added_eggs)
+
+            print(f"Added new set of eggs: {added_eggs}")
+        else:
+            print("Hatchery is full")
+
+        # schedule next timer
+        reset_time = now + 86400
+        char["EggResetTime"] = reset_time
+        char["OwnedEggsID"] = owned
+        save_characters(session.user_id, session.char_list)
+
+    else:
+        print("new egg set is not ready yet")
+
+    char["EggNotifySent"] = False
+    packet = build_hatchery_packet(owned, reset_time)
+    session.conn.sendall(packet)

@@ -293,6 +293,9 @@ class GearType:
 class class_13:
       const_949 = 3
 
+class class_16:
+      const_167 = 6
+
 class class_66:
     const_465 = 3
     const_409 = 6
@@ -354,6 +357,7 @@ ABILITY_DATA  = _load_json(os.path.join(DATA_DIR, "AbilityTypes.json"), [])
 BUILDING_DATA = _load_json(os.path.join(DATA_DIR, "BuildingTypes.json"), [])
 CHARM_DB      = {int(c["CharmID"]): c for c in _load_json(os.path.join(DATA_DIR, "Charms.json"), [])}
 CONSUMABLES   = _load_json(os.path.join(DATA_DIR, "ConsumableTypes.json"), [])
+EGG_TYPES     = _load_json(os.path.join(DATA_DIR, "egg_types.json"), [])
 
 CONSUMABLE_BOOSTS = {
     int(c.get("ConsumableID", 0)): {

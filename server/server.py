@@ -26,7 +26,7 @@ from buildings import handle_building_claim, handle_building_upgrade, handle_bui
 from socials import handle_zone_panel_request, handle_public_chat, handle_private_message, handle_room_thought, \
     handle_start_skit, handle_emote_begin, handle_group_invite, handle_query_message_answer, handle_map_location_update, \
     handle_group_kick, handle_group_leave, handle_group_leader, handle_send_group_chat
-from pets import handle_equip_pets, handle_mount_equip_packet
+from pets import handle_equip_pets, handle_mount_equip_packet, handle_request_hatchery_eggs
 from Commands import handle_gear_packet, handle_apply_dyes, handle_equip_rune, handle_change_look, \
     handle_create_gearset, handle_name_gearset, \
     handle_apply_gearset, handle_update_equipment, handle_hp_increase_notice, handle_volume_enter, \
@@ -402,6 +402,8 @@ def handle_client(session: ClientSession):
                 handle_equip_pets(session, data, all_sessions)
             elif pkt == 0xB2:
                 handle_mount_equip_packet(session, data, all_sessions)
+            elif pkt == 0xE4:
+                handle_request_hatchery_eggs(session, data)
             ############################################
 
             # Character.py

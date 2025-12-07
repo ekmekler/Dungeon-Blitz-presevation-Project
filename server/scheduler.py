@@ -11,7 +11,7 @@ from BitBuffer import BitBuffer
 from Character import save_characters, load_characters, CHAR_SAVE_DIR
 from constants import class_111, class_64_const_218, class_1
 from globals import send_skill_complete_packet, send_building_complete_packet, send_forge_reroll_packet, \
-    send_talent_point_research_complete
+    send_talent_point_research_complete, all_sessions, build_hatchery_notify_packet
 
 active_session_resolver = None
 
@@ -261,6 +261,35 @@ def schedule_Talent_point_research(user_id: str, char_name: str, run_at: int):
     )
     return handle
 
+def _on_hatchery_refresh(user_id: str, char_name: str):
+    chars = load_characters(user_id)
+    char = next((c for c in chars if c["name"] == char_name), None)
+    if not char:
+        return
+
+    # Skip notification if already sent
+    if char.get("EggNotifySent", False):
+         pass
+    else:
+        # Try to find online session
+        for sess in all_sessions:
+            if sess.user_id == user_id and sess.current_character == char_name:
+                pkt = build_hatchery_notify_packet()
+                sess.conn.sendall(pkt)
+                break
+
+        char["EggNotifySent"] = True
+        save_characters(user_id, chars)
+
+    # schedule next refresh
+    next_time = int(time.time()) + 86400
+    scheduler.schedule(next_time, lambda: _on_hatchery_refresh(user_id, char_name))
+
+
+def schedule_hatchery_refresh(user_id: str, char_name: str, run_at: int):
+    scheduler.schedule(run_at, lambda: _on_hatchery_refresh(user_id, char_name))
+
+
 def boot_scan_all_saves():
     now = int(time.time())
     for path in glob.glob(os.path.join(CHAR_SAVE_DIR, "*.json")):
@@ -325,6 +354,15 @@ def boot_scan_all_saves():
                 else:
                     # still pending: schedule its completion
                     schedule_Talent_point_research(user_id, char["name"], rt)
+
+            egg_rt = char.get("EggResetTime")
+
+            if not egg_rt:
+                egg_rt = int(time.time()) + 86400
+                char["EggResetTime"] = egg_rt
+                dirty = True
+
+            schedule_hatchery_refresh(user_id, char["name"], egg_rt)
 
         if dirty:
             with open(path, "w", encoding="utf-8") as f:
