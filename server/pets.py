@@ -298,3 +298,7 @@ def handle_egg_speed_up(session, data):
 
     save_characters(session.user_id, session.char_list)
     send_egg_hatch_start(session)
+
+
+def handle_collect_hatched_egg(session, data):
+      pass

@@ -114,10 +114,6 @@ def handle_talk_to_npc(session, data):
         f"dialogue_id={dialogue_id}, mission_id={mission_id}"
     )
 
-#TODO...
-def handle_collect_hatched_egg(conn, char):
-      pass
-
 REWARD_TYPES = ['gear', 'item', 'gold', 'chest', 'xp', 'potion']
 GEARTYPE_BITS = GearType.GEARTYPE_BITSTOSEND  # e.g. 5
 
