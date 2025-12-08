@@ -149,3 +149,30 @@ def handle_train_pet(session, data):
 
     save_characters(session.user_id, session.char_list)
     schedule_pet_training(session.user_id, session.current_character, ready_at)
+
+def handle_pet_training_collect(session, data):
+    char = session.current_char_dict
+    tp_list = char.get("trainingPet", [])
+
+    tp = tp_list[0]
+    type_id = tp["typeID"]
+    special_id = tp["special_id"]
+
+    pets = char.get("pets", [])
+    for pet in pets:
+        if pet["typeID"] == type_id and pet["special_id"] == special_id:
+            pet["level"] = pet.get("level", 0) + 1
+            break
+
+    # Active pet?
+    ap = char.get("activePet", {})
+    if ap.get("special_id") == special_id:
+        ap["level"] = ap.get("level", 0) + 1
+
+    char["trainingPet"] = [{
+        "typeID": 0,
+        "special_id": 0,
+        "trainingTime": 0
+    }]
+
+    save_characters(session.user_id, session.char_list)
