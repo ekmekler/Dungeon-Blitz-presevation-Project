@@ -176,3 +176,12 @@ def handle_pet_training_collect(session, data):
     }]
 
     save_characters(session.user_id, session.char_list)
+
+def handle_pet_training_cancel(session, data):
+    char = session.current_char_dict
+    char["trainingPet"] = [{
+        "typeID": 0,
+        "special_id": 0,
+        "trainingTime": 0
+    }]
+    save_characters(session.user_id, session.char_list)
