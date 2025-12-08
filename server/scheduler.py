@@ -11,7 +11,7 @@ from BitBuffer import BitBuffer
 from Character import save_characters, load_characters, CHAR_SAVE_DIR
 from constants import class_111, class_64_const_218, class_1
 from globals import send_skill_complete_packet, send_building_complete_packet, send_forge_reroll_packet, \
-    send_talent_point_research_complete, all_sessions, build_hatchery_notify_packet
+    send_talent_point_research_complete, all_sessions, build_hatchery_notify_packet, send_pet_training_complete
 
 active_session_resolver = None
 
@@ -289,6 +289,32 @@ def _on_hatchery_refresh(user_id: str, char_name: str):
 def schedule_hatchery_refresh(user_id: str, char_name: str, run_at: int):
     scheduler.schedule(run_at, lambda: _on_hatchery_refresh(user_id, char_name))
 
+def _on_pet_training_done(user_id: str, char_name: str):
+    chars = load_characters(user_id)
+    char = next((c for c in chars if c.get("name") == char_name), None)
+    if not char:
+        return
+
+    tp_list = char.get("trainingPet", [])
+    if not tp_list:
+        return
+
+    ready_ts = tp_list[0].get("trainingTime", 0)
+    now = int(time.time())
+
+    if ready_ts > now:
+        return  # not ready
+
+    save_characters(user_id, chars)
+
+    if active_session_resolver:
+        session = active_session_resolver(user_id, char_name)
+        if session and session.authenticated:
+            pet_type = tp_list[0]["typeID"]
+            send_pet_training_complete(session, pet_type)
+
+def schedule_pet_training(user_id: str, char_name: str, ready_ts: int):
+    scheduler.schedule(run_at=ready_ts,callback=lambda uid=user_id, cn=char_name:_on_pet_training_done(uid, cn))
 
 def boot_scan_all_saves():
     now = int(time.time())
@@ -363,6 +389,16 @@ def boot_scan_all_saves():
                 dirty = True
 
             schedule_hatchery_refresh(user_id, char["name"], egg_rt)
+
+            tp_list = char.get("trainingPet", [])
+            if tp_list:
+                ts = tp_list[0].get("trainingTime", 0)
+
+                if ts <= now:
+
+                    dirty = True
+                else:
+                    schedule_pet_training(user_id, char["name"], ts)
 
         if dirty:
             with open(path, "w", encoding="utf-8") as f:

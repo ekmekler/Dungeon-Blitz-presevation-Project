@@ -25,7 +25,7 @@ from constants import (
     SLOT_BIT_WIDTHS,
     NUM_TALENT_SLOTS,
     GEARTYPE_BITS,
-    class_119, class_111, class_9, class_66, MASTERCLASS_TO_BUILDING, class_21, Game, Mission, Entity,
+    class_119, class_111, class_9, class_66, MASTERCLASS_TO_BUILDING, class_21, Game, Mission, Entity, class_7,
 )
 from globals import all_sessions
 from missions import get_total_mission_defs, get_mission_def
@@ -466,12 +466,21 @@ def Player_Data_Packet(char: dict,
 
         # ──────────────(Training pets)──────────────
         tp_list = char.get("trainingPet", [])
-        if tp_list and isinstance(tp_list, list) and len(tp_list) > 0:
+        if tp_list:
             tp = tp_list[0]
-            buf.write_method_11(1, 1)
-            buf.write_method_6(tp["typeID"], class_7_const_19)
-            buf.write_method_4(tp["special_id"])
-            buf.write_method_4(tp.get("trainingTime", 0))
+            type_id = tp["typeID"]
+            special_id = tp["special_id"]
+            ready_ts = tp.get("trainingTime", 0)
+            now = int(time.time())
+
+            buf.write_method_11(1, 1)  # training exists
+            buf.write_method_6(type_id, class_7.const_19)
+            buf.write_method_4(special_id)
+
+            if ready_ts <= now:
+                buf.write_method_4(0)# training complete
+            else:
+                buf.write_method_4(ready_ts)
         else:
             buf.write_method_11(0, 1)
 

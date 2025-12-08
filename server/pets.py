@@ -4,6 +4,8 @@ from Character import save_characters
 from bitreader import BitReader
 from constants import class_20, class_7
 from globals import build_hatchery_packet, pick_daily_eggs, send_premium_purchase
+from scheduler import schedule_pet_training
+
 
 # Helpers
 ##############################################################
@@ -146,3 +148,4 @@ def handle_train_pet(session, data):
     }]
 
     save_characters(session.user_id, session.char_list)
+    schedule_pet_training(session.user_id, session.current_character, ready_at)
