@@ -296,6 +296,7 @@ class class_13:
       const_949 = 3
 
 class class_16:
+      new_egg_set_time = 72000 # 20 hours
       const_993 = 259200
       const_1093 = 518400
       const_907 = 864000

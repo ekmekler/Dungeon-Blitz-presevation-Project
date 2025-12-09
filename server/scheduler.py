@@ -9,7 +9,7 @@ import struct
 
 from BitBuffer import BitBuffer
 from Character import save_characters, load_characters, CHAR_SAVE_DIR
-from constants import class_111, class_64_const_218, class_1
+from constants import class_111, class_64_const_218, class_1, class_16
 from globals import send_skill_complete_packet, send_building_complete_packet, send_forge_reroll_packet, \
     send_talent_point_research_complete, all_sessions, build_hatchery_notify_packet, send_pet_training_complete, \
     send_egg_hatch_start
@@ -283,7 +283,7 @@ def _on_hatchery_refresh(user_id: str, char_name: str):
         save_characters(user_id, chars)
 
     # schedule next refresh
-    next_time = int(time.time()) + 86400
+    next_time = int(time.time()) + class_16.new_egg_set_time
     scheduler.schedule(next_time, lambda: _on_hatchery_refresh(user_id, char_name))
 
 
@@ -413,7 +413,7 @@ def boot_scan_all_saves():
             egg_rt = char.get("EggResetTime")
 
             if not egg_rt:
-                egg_rt = int(time.time()) + 86400
+                egg_rt = int(time.time()) + class_16.new_egg_set_time
                 char["EggResetTime"] = egg_rt
                 dirty = True
 

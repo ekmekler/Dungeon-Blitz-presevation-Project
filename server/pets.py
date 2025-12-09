@@ -131,7 +131,7 @@ def handle_request_hatchery_eggs(session, data):
             print("Hatchery is full")
 
         # schedule next timer
-        reset_time = now + 86400
+        reset_time = now + class_16.new_egg_set_time
         char["EggResetTime"] = reset_time
         char["OwnedEggsID"] = owned
         save_characters(session.user_id, session.char_list)
