@@ -13,8 +13,7 @@ from ai_logic import AI_ENABLED, ensure_ai_loop, run_ai_loop
 from bitreader import BitReader
 from constants import EntType
 from entity import Send_Entity_Data, ensure_level_npcs
-from globals import SECRET, session_by_token, _level_add, pending_world, current_characters, used_tokens, \
-    extended_sent_map, token_char
+from globals import SECRET, session_by_token, _level_add, pending_world, current_characters, used_tokens, token_char
 from level_config import LEVEL_CONFIG, get_spawn_coordinates
 
 def handle_login_version(session, data, conn):
@@ -239,7 +238,7 @@ def handle_gameserver_login(session, data, conn):
     br = BitReader(data[4:])
     token        = br.read_method_9()
     extra_string = br.read_method_26()
-    extra_flag   = br.read_method_15()
+    first_login   = br.read_method_15()
 
     entry = pending_world.get(token)
     if entry is None:
@@ -295,11 +294,6 @@ def handle_gameserver_login(session, data, conn):
     # Store token mapping (needed by client for entType etc.)
     used_tokens[token] = (char, target_level, previous_level)
 
-    last = extended_sent_map.get(session.user_id)
-    send_ext = (last is None)
-
-    extended_sent_map[session.user_id] = time.time() 
-
     #TODO...
     #level_config = LEVEL_CONFIG.get(target_level, ("", 1, 1, False))
     #bonus_levels = level_config[2]
@@ -314,7 +308,7 @@ def handle_gameserver_login(session, data, conn):
         new_x=int(round(new_x)),
         new_y=int(round(new_y)),
         new_has_coord=new_has_coord,
-        send_extended=send_ext,
+        send_extended=first_login,
     )
 
     conn.sendall(welcome)

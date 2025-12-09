@@ -6,7 +6,7 @@ import threading
 import time
 
 from PolicyServer import start_policy_server
-from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, extended_sent_map, HOST, PORTS, Client_Crash_Reports, handle_entity_destroy_server, pending_world
+from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, HOST, PORTS, Client_Crash_Reports, handle_entity_destroy_server, pending_world
 from scheduler import set_active_session_resolver
 from static_server import start_static_server
 from Character import save_characters, handle_request_armory_gears, handle_alert_state_update, PaperDoll_Request
@@ -165,32 +165,6 @@ class ClientSession:
         if self in all_sessions:
             all_sessions.remove(self)
 
-        if self.user_id in extended_sent_map:
-            extended_sent_map[self.user_id] = time.time()
-
-
-def prune_extended_sent_map(timeout: int = 5):
-    now = time.time()
-
-    for uid, last_sent in list(extended_sent_map.items()):
-
-        # Is the player connected via session?
-        has_session = any(
-            s.user_id == uid and s.running
-            for s in all_sessions
-        )
-
-        # Is the player in a level-transfer handshake?
-        has_pending_token = any(
-            token_info[0] == uid for token_info in pending_world.values()
-        )
-
-        if has_session or has_pending_token:
-            continue
-
-        if now - last_sent > timeout:
-            extended_sent_map.pop(uid, None)
-            print(f"[DEBUG] Cleared extended_sent_map[{uid}] (fully offline, timeout expired)")
 
 def read_exact(conn, n):
     buf = b""
@@ -206,7 +180,6 @@ def handle_client(session: ClientSession):
     addr = session.addr
     print("Connected:", addr)
     conn.settimeout(300)
-    prune_extended_sent_map(timeout=10)
     buffer = bytearray()
     try:
         while True:

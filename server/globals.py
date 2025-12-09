@@ -16,7 +16,6 @@ session_by_token = {}
 level_registry = {}
 char_tokens = {}
 token_char   = {}
-extended_sent_map = {}  # user_id -> bool
 level_npcs = {}
 level_players = {}
 
