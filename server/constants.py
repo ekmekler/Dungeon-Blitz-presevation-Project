@@ -297,14 +297,14 @@ class class_13:
 
 class class_16:
       new_egg_set_time = 72000 # 20 hours
-      const_993 = 259200
-      const_1093 = 518400
-      const_907 = 864000
-      const_1290 = 8
+      const_993 = 259200 # 3 days
+      const_1093 = 518400 # 6 days
+      const_907 = 864000 # 10 days
+      const_1290 = 8 # max egg slot
       const_1251 = 4
       const_167 = 6
-      const_644 = [0, 5000, 25000, 50000, 75000, 250000, 500000, 750000]
-      const_600 = [0, 3, 13, 25, 37, 60, 94, 119]
+      const_644 = [0, 5000, 25000, 50000, 75000, 250000, 500000, 750000] # Egg hatch gold cost
+      const_600 = [0, 3, 13, 25, 37, 60, 94, 119] # Egg hatch idol cost
 
 class class_66:
     const_465 = 3
