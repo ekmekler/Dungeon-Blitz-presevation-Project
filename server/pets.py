@@ -37,15 +37,14 @@ def get_egg_idol_cost(slot_index: int) -> int:
     return 0
 
 def get_egg_hatch_time(egg_rank: int, first_pet: bool) -> int:
+    """# if the player has no pets  the first egg hatch time will be 180 seconds because of the Tutorial"""
     if first_pet:
         return Game.const_181  # 180 seconds
-
-    # class_16.const_303 = 0, const_376 = 1
     if egg_rank == 0:
-        return 259200   # 3 days
+        return class_16.const_993   # 3 days
     if egg_rank == 1:
-        return 518400   # 6 days
-    return 864000       # 10 days
+        return class_16.const_1093   # 6 days
+    return class_16.const_907       # 10 days
 
 def find_egg_def(egg_id: int):
     for e in EGG_TYPES:

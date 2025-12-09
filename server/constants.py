@@ -296,6 +296,9 @@ class class_13:
       const_949 = 3
 
 class class_16:
+      const_993 = 259200
+      const_1093 = 518400
+      const_907 = 864000
       const_1290 = 8
       const_1251 = 4
       const_167 = 6
