@@ -4,7 +4,6 @@ from BitBuffer import BitBuffer
 import struct
 import time
 from constants import (
-    MAX_CHAR_LEVEL_BITS,
     GearType,
     CLASS_NAME_TO_ID,
     class_64,
@@ -80,7 +79,7 @@ def Player_Data_Packet(char: dict,
 
     # ──────────────(Numeric fields)──────────────
     char_level = char.get("level", 1) or 1
-    buf.write_method_6(char_level, MAX_CHAR_LEVEL_BITS)
+    buf.write_method_6(char_level, Entity.MAX_CHAR_LEVEL_BITS)
     buf.write_method_4(char.get("xp", 0))
     buf.write_method_4(char.get("gold", 0))
     buf.write_method_4(char.get("craftXP", 0))
@@ -317,7 +316,7 @@ def Player_Data_Packet(char: dict,
                 buf.write_method_11(0, 1)  # hasCustomName = false
                 class_id = CLASS_NAME_TO_ID.get(class_name, 0)
                 buf.write_method_11(class_id, Entity.const_244)  # class
-                buf.write_method_11(level, MAX_CHAR_LEVEL_BITS)  # level
+                buf.write_method_11(level, Entity.MAX_CHAR_LEVEL_BITS)  # level
 
 
         # ──────────────(Abilities)──────────────
@@ -664,8 +663,8 @@ def build_enter_world_packet(
     buf.write_method_13(new_level_swf)
 
     # 8) new_map_lvl, new_base_lvl (_loc12_, _loc13_, 6 bits each)
-    buf.write_method_6(new_map_lvl, MAX_CHAR_LEVEL_BITS)
-    buf.write_method_6(new_base_lvl, MAX_CHAR_LEVEL_BITS)
+    buf.write_method_6(new_map_lvl, Entity.MAX_CHAR_LEVEL_BITS)
+    buf.write_method_6(new_base_lvl, Entity.MAX_CHAR_LEVEL_BITS)
 
     # 9) new strings (_loc14_, _loc15_, _loc16_)
     buf.write_method_13(new_internal)
