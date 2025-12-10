@@ -5,7 +5,6 @@ import struct
 import time
 from constants import (
     MAX_CHAR_LEVEL_BITS,
-    class_10_const_83,
     GearType,
     CLASS_NAME_TO_ID,
     class_64,
@@ -15,7 +14,7 @@ from constants import (
     NUM_TALENT_SLOTS,
     GEARTYPE_BITS,
     class_119, class_111, class_9, class_66, MASTERCLASS_TO_BUILDING, class_21, Game, Mission, Entity, class_7,
-    class_16, class_118, class_1,
+    class_16, class_118, class_1, class_10,
 )
 from globals import all_sessions
 from missions import get_total_mission_defs, get_mission_def
@@ -325,11 +324,11 @@ def Player_Data_Packet(char: dict,
 
         # ──────────────(Abilities)──────────────
         learned_abilities = char.get("learnedAbilities", [])
-        buf.write_method_6(len(learned_abilities), class_10_const_83)
+        buf.write_method_6(len(learned_abilities), class_10.const_83)
         for ability in learned_abilities:
             ability_id = ability.get("abilityID", 0)
             rank = ability.get("rank", 0)
-            buf.write_method_6(ability_id, class_10_const_83)
+            buf.write_method_6(ability_id, class_10.const_83)
             buf.write_method_6(rank, class_10.const_665)
 
         # ──────────────(activeAbilities)──────────────
@@ -337,7 +336,7 @@ def Player_Data_Packet(char: dict,
         while len(active_slots) < 3:
             active_slots.append(0)
         for slot_id in active_slots[:3]:
-            buf.write_method_6(slot_id, class_10_const_83)
+            buf.write_method_6(slot_id, class_10.const_83)
 
         # ──────────────(craftTalentPoints)──────────────
         craft_talent_points = char.get("craftTalentPoints", [0, 0, 0, 0, 0])  # List of 5 values, each 0-15
@@ -395,7 +394,7 @@ def Player_Data_Packet(char: dict,
         research = char.get("SkillResearch")
         if research:
             buf.write_method_11(1, 1)
-            buf.write_method_6(research["abilityID"], class_10_const_83)
+            buf.write_method_6(research["abilityID"], class_10.const_83)
             end_sec = research.get("ReadyTime", 0)
             if research.get("done"):
                 buf.write_method_4(0)

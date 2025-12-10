@@ -6,7 +6,6 @@ NUM_TALENT_SLOTS = 27
 CONST_529 = [5,2,3,5,5,3,2,3,2,5,2,3,5,5,3,2,3,2,5,2,3,5,5,3,2,3,2]
 GS_BITS = 2
 MAX_CHAR_LEVEL_BITS = 6
-class_10_const_83  = 7
 class_7_const_19 = 7
 GEARTYPE_BITS = 11
 SLOT_BIT_WIDTHS = []
