@@ -8,7 +8,6 @@ from constants import (
     GearType,
     CLASS_NAME_TO_ID,
     class_64,
-    class_7_const_19,
     NEWS_EVENTS,
     SLOT_BIT_WIDTHS,
     NUM_TALENT_SLOTS,
@@ -462,7 +461,7 @@ def Player_Data_Packet(char: dict,
             if i < len(rest):
                 r = rest[i]
                 buf.write_method_11(1, 1)
-                buf.write_method_6(r["typeID"], class_7_const_19)
+                buf.write_method_6(r["typeID"], class_7.const_19)
                 buf.write_method_4(r["special_id"])
             else:
                 buf.write_method_11(0, 1)
