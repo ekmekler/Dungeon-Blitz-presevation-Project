@@ -3,15 +3,7 @@ from typing import Dict
 from BitBuffer import BitBuffer
 import struct
 import time
-from constants import (
-    GearType,
-    CLASS_NAME_TO_ID,
-    class_64,
-    NEWS_EVENTS,
-    SLOT_BIT_WIDTHS,
-    class_119, class_111, class_9, class_66, MASTERCLASS_TO_BUILDING, class_21, Game, Mission, Entity, class_7,
-    class_16, class_118, class_1, class_10,
-)
+from constants import GearType, CLASS_NAME_TO_ID, class_64, NEWS_EVENTS, SLOT_BIT_WIDTHS, class_119, class_111, class_9, class_66, MASTERCLASS_TO_BUILDING, class_21, Game, Mission, Entity, class_7, class_16, class_118, class_1, class_10
 from globals import all_sessions
 from missions import get_total_mission_defs, get_mission_def
 from socials import find_online_session, find_char_data_from_server_memory, get_live_friend_info
