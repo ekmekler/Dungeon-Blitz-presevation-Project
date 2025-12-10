@@ -4,8 +4,6 @@ import json
 PACKET_HEADER_SIZE = 4
 NUM_TALENT_SLOTS = 27
 CONST_529 = [5,2,3,5,5,3,2,3,2,5,2,3,5,5,3,2,3,2,5,2,3,5,5,3,2,3,2]
-class_111_const_432 = 9
-class_10_const_665 = 4
 GS_BITS = 2
 MAX_CHAR_LEVEL_BITS = 6
 class_10_const_83  = 7

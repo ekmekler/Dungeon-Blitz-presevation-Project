@@ -7,17 +7,15 @@ from constants import (
     MAX_CHAR_LEVEL_BITS,
     class_10_const_83,
     GearType,
-    class_10_const_665,
     CLASS_NAME_TO_ID,
     class_64,
-    class_111_const_432,
     class_7_const_19,
     NEWS_EVENTS,
     SLOT_BIT_WIDTHS,
     NUM_TALENT_SLOTS,
     GEARTYPE_BITS,
     class_119, class_111, class_9, class_66, MASTERCLASS_TO_BUILDING, class_21, Game, Mission, Entity, class_7,
-    class_16, class_118,
+    class_16, class_118, class_1,
 )
 from globals import all_sessions
 from missions import get_total_mission_defs, get_mission_def
@@ -332,7 +330,7 @@ def Player_Data_Packet(char: dict,
             ability_id = ability.get("abilityID", 0)
             rank = ability.get("rank", 0)
             buf.write_method_6(ability_id, class_10_const_83)
-            buf.write_method_6(rank, class_10_const_665)
+            buf.write_method_6(rank, class_10.const_665)
 
         # ──────────────(activeAbilities)──────────────
         active_slots = char.get("activeAbilities", [0, 0, 0])
@@ -386,7 +384,7 @@ def Player_Data_Packet(char: dict,
                 buf.write_method_6(var_8, class_64.const_499)
                 if var_8:
                     buf.write_method_6(mf.get("secondary", 0), class_64.const_218)
-                    buf.write_method_6(mf.get("usedlist", 0), class_111_const_432)
+                    buf.write_method_6(mf.get("usedlist", 0), class_111.const_432)
 
             # 2c) Always send these two when a session exists
             buf.write_method_91(min(mf.get("forge_roll_a", 0), 65535))
