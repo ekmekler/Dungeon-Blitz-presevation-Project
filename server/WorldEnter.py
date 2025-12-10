@@ -11,7 +11,6 @@ from constants import (
     CLASS_NAME_TO_ID,
     class_64,
     class_111_const_432,
-    class_64_const_218,
     class_7_const_19,
     NEWS_EVENTS,
     SLOT_BIT_WIDTHS,
@@ -386,7 +385,7 @@ def Player_Data_Packet(char: dict,
                 var_8 = mf.get("secondary_tier", 0)
                 buf.write_method_6(var_8, class_64.const_499)
                 if var_8:
-                    buf.write_method_6(mf.get("secondary", 0), class_64_const_218)
+                    buf.write_method_6(mf.get("secondary", 0), class_64.const_218)
                     buf.write_method_6(mf.get("usedlist", 0), class_111_const_432)
 
             # 2c) Always send these two when a session exists

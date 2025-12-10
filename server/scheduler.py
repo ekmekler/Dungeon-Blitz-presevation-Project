@@ -9,7 +9,7 @@ import struct
 
 from BitBuffer import BitBuffer
 from Character import save_characters, load_characters, CHAR_SAVE_DIR
-from constants import class_111, class_64_const_218, class_1, class_16
+from constants import class_111, class_16
 from globals import send_skill_complete_packet, send_building_complete_packet, send_forge_reroll_packet, \
     send_talent_point_research_complete, all_sessions, build_hatchery_notify_packet, send_pet_training_complete, \
     send_egg_hatch_start
