@@ -18,12 +18,11 @@ from constants import (
     class_64_const_218,
     class_7_const_19,
     NEWS_EVENTS,
-    GAME_CONST_209,
     SLOT_BIT_WIDTHS,
     NUM_TALENT_SLOTS,
     GEARTYPE_BITS,
     class_119, class_111, class_9, class_66, MASTERCLASS_TO_BUILDING, class_21, Game, Mission, Entity, class_7,
-    class_16,
+    class_16, class_118,
 )
 from globals import all_sessions
 from missions import get_total_mission_defs, get_mission_def
@@ -513,7 +512,7 @@ def Player_Data_Packet(char: dict,
 
     # ──────────────(MasterClass)──────────────
     selected = int(char.get("MasterClass", 0) or 0)
-    buf.write_method_6(selected, GAME_CONST_209)
+    buf.write_method_6(selected, Game.const_209)
 
     if selected > 0:
         buf.write_method_11(1, 1)
@@ -711,7 +710,7 @@ def build_enter_world_packet(
 
         # --- WRITE master class id so the client parses the following fields correctly ---
         master_class_id = int(char.get("MasterClass", 0) if char else 0)
-        buf.write_method_6(master_class_id, GAME_CONST_209)
+        buf.write_method_6(master_class_id, Game.const_209)
 
         # Map MasterClass -> building id for tower lookup (ensure MASTERCLASS_TO_BUILDING exists)
         tower_building_id = MASTERCLASS_TO_BUILDING.get(master_class_id, 0)
