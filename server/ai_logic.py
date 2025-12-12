@@ -3,7 +3,7 @@ import time
 import threading
 import struct
 from BitBuffer import BitBuffer
-from globals import level_registry, level_npcs, level_players, all_sessions
+from globals import all_sessions, GS
 
 #AI needs a lot more work to be done so will keep it off for now
 AI_ENABLED = False
@@ -77,9 +77,9 @@ def run_ai_loop(level_name):
     while True:
         time.sleep(AI_INTERVAL)
 
-        npcs = level_npcs.get(level_name, {})
-        sessions = list(level_registry.get(level_name, []))
-        players = level_players.get(level_name, [])
+        npcs = GS.level_npcs.get(level_name, {})
+        sessions = list(GS.level_registry.get(level_name, []))
+        players = GS.level_players.get(level_name, [])
 
         if not npcs or not players:
             continue

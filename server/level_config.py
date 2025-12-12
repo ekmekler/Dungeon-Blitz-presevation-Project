@@ -7,7 +7,7 @@ from Character import load_characters, save_characters
 from WorldEnter import build_enter_world_packet
 from bitreader import BitReader
 from constants import door, class_119, Entity, _load_json
-from globals import used_tokens, pending_world, session_by_token, token_char, send_admin_chat, handle_entity_destroy_server, all_sessions
+from globals import send_admin_chat, handle_entity_destroy_server, all_sessions, GS
 
 
 # witness the spaghetti code  down below :)
@@ -278,9 +278,9 @@ def handle_level_transfer_request(session, data, conn):
     requested_level_name = br.read_method_13()
 
     # Resolve character + default target level from token tables
-    entry = used_tokens.get(old_token) or pending_world.get(old_token)
+    entry = GS.used_tokens.get(old_token) or GS.pending_world.get(old_token)
     if not entry:
-        s = session_by_token.get(old_token)
+        s = GS.session_by_token.get(old_token)
         if s:
             entry = (
                 getattr(s, "current_char_dict", None) or {"name": s.current_character},
@@ -330,7 +330,7 @@ def handle_level_transfer_request(session, data, conn):
 
     # Ensure we know user_id
     if not session.user_id:
-        token_info = token_char.get(old_token)
+        token_info = GS.token_char.get(old_token)
         if not token_info:
             print(f"[{session.addr}] ERROR: Could not resolve user_id for token {old_token}")
             return
@@ -362,7 +362,7 @@ def handle_level_transfer_request(session, data, conn):
 
     # Create a fresh transfer token for the new world
     new_token = session.ensure_token(char, target_level=target_level, previous_level=old_level)
-    pending_world[new_token] = (char, target_level, old_level)
+    GS.pending_world[new_token] = (char, target_level, old_level)
 
     # Build and send ENTER_WORLD packet
     if target_level not in LEVEL_CONFIG:

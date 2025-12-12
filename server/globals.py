@@ -8,22 +8,31 @@ from constants import class_3, class_1, class_64, class_111, class_66, GearType,
 HOST = "127.0.0.1"
 PORTS = [8080]# Developer mode Port : 7498
 
-pending_world = {}
+class GlobalState:
+    def __init__(self):
+        self.current_characters = {}# Done
+        self.used_tokens = {}# Done
+        self.session_by_token = {}# Done
+        self.level_registry = {}
+        self.char_tokens = {} # Done
+        self.token_char = {} # Done
+        self.pending_world = {}# Done
+        self.level_npcs = {}# Done
+        self.level_players = {}# Done
+
+# a single shared instance:
+GS = GlobalState()
+
 all_sessions = []
-current_characters = {}
-used_tokens = {}
-session_by_token = {}
-level_registry = {}
-char_tokens = {}
-token_char   = {}
-level_npcs = {}
-level_players = {}
+
+
+
 
 SECRET_HEX = "815bfb010cd7b1b4e6aa90abc7679028"
 SECRET      = bytes.fromhex(SECRET_HEX)
 
 def _level_add(level, session):
-    s = level_registry.setdefault(level, set())
+    s = GS.level_registry.setdefault(level, set())
     s.add(session)
 
 # Helpers

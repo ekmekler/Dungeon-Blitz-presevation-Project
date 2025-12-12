@@ -6,7 +6,7 @@ import threading
 import time
 
 from PolicyServer import start_policy_server
-from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, HOST, PORTS, Client_Crash_Reports, handle_entity_destroy_server, level_players
+from globals import all_sessions, HOST, PORTS, Client_Crash_Reports, handle_entity_destroy_server, GS
 from scheduler import set_active_session_resolver
 from static_server import start_static_server
 from Character import save_characters, handle_request_armory_gears, handle_alert_state_update, PaperDoll_Request
@@ -34,14 +34,14 @@ ENABLE_ADMIN_PANEL = False
 
 def _level_remove(level, session):
     # Remove from registry
-    s = level_registry.get(level)
+    s = GS.level_registry.get(level)
     if s and session in s:
         s.remove(session)
 
     # Remove from level_players
-    players = level_players.get(level)
+    players = GS.level_players.get(level)
     if players:
-        level_players[level] = [
+        GS.level_players[level] = [
             p for p in players if p.get("session") is not session
         ]
 
@@ -50,7 +50,7 @@ def new_transfer_token():
     """Allocate a persistent 16-bit token not in use."""
     while True:
         t = secrets.randbits(16)
-        if t not in session_by_token:
+        if t not in GS.session_by_token:
            return t
 
 def find_active_session(user_id, char_name):
@@ -102,15 +102,19 @@ class ClientSession:
 
     def ensure_token(self, char, target_level=None, previous_level=None):
         key = (self.user_id, char.get("name"))
-        if key in char_tokens:
-            tk = char_tokens[key]
+
+        # Look up or assign a token
+        if key in GS.char_tokens:
+            tk = GS.char_tokens[key]
         else:
             tk = new_transfer_token()
-            char_tokens[key] = tk
-            token_char[tk] = key
+            GS.char_tokens[key] = tk
+            GS.token_char[tk] = key
 
+        # Store session mapping
         self.clientEntID = tk
-        session_by_token[tk] = self
+        GS.session_by_token[tk] = self
+
         return tk
 
     def save_player_position(self):
@@ -160,7 +164,7 @@ class ClientSession:
         except:
             pass
 
-        s = session_by_token.get(self.clientEntID)
+        s = GS.session_by_token.get(self.clientEntID)
         if s:
             s.running = False
 

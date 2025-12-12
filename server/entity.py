@@ -6,7 +6,7 @@ from typing import Dict, Any
 from BitBuffer import BitBuffer
 from bitreader import BitReader
 from constants import Entity, class_7, class_20, class_3, Game, LinkUpdater, EntType, GearType, class_64, class_21
-from globals import level_npcs, level_players
+from globals import GS
 
 """
 Hints NPCs data 
@@ -419,7 +419,7 @@ def handle_entity_full_update(session, data, all_sessions):
 
     # add player to level_players
     if is_player:
-        players = level_players.setdefault(session.current_level, [])
+        players = GS.level_players.setdefault(session.current_level, [])
         players[:] = [p for p in players if p["id"] != entity_id]
         players.append({
             "id": entity_id,
@@ -489,15 +489,15 @@ def ensure_level_npcs(level_name):
     Ensure NPCs for this level are loaded/spawned once.
     Returns the dict of NPCs for this level.
     """
-    if level_name not in level_npcs:
+    if level_name not in GS.level_npcs:
         try:
             npcs = load_npc_data_for_level(level_name)
             npc_map = {}
             for npc in npcs:
                 npc_map[npc["id"]] = npc
-            level_npcs[level_name] = npc_map
+            GS.level_npcs[level_name] = npc_map
             #print(f"[LEVEL] Spawned {len(npc_map)} NPCs for {level_name}")
         except Exception as e:
             print(f"[LEVEL] Error loading NPCs for {level_name}: {e}")
-            level_npcs[level_name] = {}
-    return level_npcs[level_name]
+            GS.level_npcs[level_name] = {}
+    return GS.level_npcs[level_name]

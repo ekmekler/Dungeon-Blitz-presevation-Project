@@ -13,7 +13,7 @@ from ai_logic import AI_ENABLED, ensure_ai_loop, run_ai_loop
 from bitreader import BitReader
 from constants import EntType
 from entity import Send_Entity_Data, ensure_level_npcs
-from globals import SECRET, session_by_token, _level_add, pending_world, current_characters, used_tokens, token_char, all_sessions
+from globals import SECRET, _level_add, all_sessions, GS
 from level_config import LEVEL_CONFIG, get_spawn_coordinates
 from socials import get_group_for_session, online_group_members, update_session_group_cache, build_group_update_packet
 
@@ -139,7 +139,7 @@ def handle_login_character_create(session, data, conn):
 
     tk = session.ensure_token(new_char, target_level=current_level, previous_level=prev_level)
     session.clientEntID = tk
-    session_by_token[tk] = session
+    GS.session_by_token[tk] = session
     _level_add(current_level, session)
 
     level_config = LEVEL_CONFIG.get(current_level, ("LevelsNR.swf/a_Level_NewbieRoad", 1, 1, False))
@@ -167,7 +167,7 @@ def handle_login_character_create(session, data, conn):
     )
 
     conn.sendall(pkt)
-    pending_world[tk] = (new_char, current_level, prev_level)
+    GS.pending_world[tk] = (new_char, current_level, prev_level)
 
     print(f"[{session.addr}] [0x17] Character '{name}' created → entering {current_level} (tk={tk})")
 
@@ -188,7 +188,7 @@ def handle_character_select(session, data, conn):
 
         tk = session.ensure_token(c, target_level=current_level, previous_level=prev_level)
         session.clientEntID = tk
-        session_by_token[tk] = session
+        GS.session_by_token[tk] = session
         _level_add(current_level, session)
 
         level_config = LEVEL_CONFIG.get(
@@ -222,7 +222,7 @@ def handle_character_select(session, data, conn):
         )
 
         conn.sendall(pkt)
-        pending_world[tk] = (c, current_level, prev_level)
+        GS.pending_world[tk] = (c, current_level, prev_level)
 
         session.player_data = {
             "user_id": session.user_id,
@@ -241,9 +241,9 @@ def handle_gameserver_login(session, data, conn):
     previous_swf_name = br.read_method_26()
     first_login   = br.read_method_15()
 
-    entry = pending_world.get(token)
+    entry = GS.pending_world.get(token)
     if entry is None:
-        print(f"[{session.addr}] Invalid token {token}, pending_world size={len(pending_world)}")
+        print(f"[{session.addr}] Invalid token {token}, pending_world size={len(GS.pending_world)}")
         return
 
     # expect (char, target_level, previous_level)
@@ -251,7 +251,7 @@ def handle_gameserver_login(session, data, conn):
 
     # Resolve user_id from token_char if needed
     if not session.user_id:
-        key = token_char.get(token)
+        key = GS.token_char.get(token)
         if not key:
             print(f"[{session.addr}] Warning: could not resolve user_id for token {token}")
             return
@@ -267,7 +267,7 @@ def handle_gameserver_login(session, data, conn):
 
     session.clientEntID   = token
     session.authenticated = True
-    current_characters[session.user_id] = session.current_character
+    GS.current_characters[session.user_id] = session.current_character
 
     # Save/update character list
     session.char_list = load_characters(session.user_id)
@@ -287,13 +287,13 @@ def handle_gameserver_login(session, data, conn):
     with open(save_path, "w", encoding="utf-8") as f:
         json.dump(session.player_data, f, indent=2)
 
-    pending_world.pop(token, None)
+    GS.pending_world.pop(token, None)
 
     # Spawn point
     new_x, new_y, new_has_coord = get_spawn_coordinates(char, previous_level, target_level)
 
     # Store token mapping (needed by client for entType etc.)
-    used_tokens[token] = (char, target_level, previous_level)
+    GS.used_tokens[token] = (char, target_level, previous_level)
 
     #TODO...
     #level_config = LEVEL_CONFIG.get(target_level, ("", 1, 1, False))

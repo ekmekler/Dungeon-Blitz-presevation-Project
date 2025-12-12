@@ -6,8 +6,7 @@ from Character import load_characters
 from GameState import state
 from bitreader import BitReader
 from constants import Entity
-from globals import level_players, get_active_character_name, current_characters, build_room_thought_packet, \
-     send_chat_status, build_empty_group_packet, build_group_chat_packet, build_groupmate_map_packet
+from globals import get_active_character_name, build_room_thought_packet, send_chat_status, build_empty_group_packet, build_group_chat_packet, build_groupmate_map_packet, GS
 
 
 # Helpers
@@ -23,7 +22,7 @@ def find_online_session(all_sessions, name):
 
 def find_char_data_from_server_memory(name):
     """Returns the character save dict (already loaded on boot)."""
-    for uid, current_char_name in current_characters.items():
+    for uid, current_char_name in GS.current_characters.items():
         if current_char_name.lower() == name.lower():
 
             chars = load_characters(uid)
@@ -123,7 +122,7 @@ def update_session_group_cache(gid, members):
 
 def handle_zone_panel_request(session):
     level = session.current_level
-    players = level_players.get(level)
+    players = GS.level_players.get(level)
     send_zone_players_update(session, players)
 
 def handle_public_chat(session, data, all_sessions):

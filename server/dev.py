@@ -2,7 +2,7 @@ import struct
 
 from BitBuffer import BitBuffer
 from bitreader import BitReader
-from globals import pending_world
+from globals import GS
 from login import handle_gameserver_login
 """
 Some context : 
@@ -29,7 +29,7 @@ def DEVFLAG_STANDALONE_CLIENT(session, data, conn):
     value = br.read_method_9()
     Boolean = br.read_method_15()
     print(f" value : {value} : Boolean {Boolean}  ")
-    for t, (char, _, _) in pending_world.items():
+    for t, (char, _, _) in GS.pending_world.items():
         if session.user_id is None or char.get("user_id") == session.user_id:
             handle_gameserver_login(session, build_fake_login_packet(t), conn)
             return
