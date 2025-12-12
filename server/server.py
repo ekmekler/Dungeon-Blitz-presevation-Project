@@ -6,7 +6,7 @@ import threading
 import time
 
 from PolicyServer import start_policy_server
-from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, HOST, PORTS, Client_Crash_Reports, handle_entity_destroy_server, pending_world
+from globals import level_registry, session_by_token, all_sessions, char_tokens, token_char, HOST, PORTS, Client_Crash_Reports, handle_entity_destroy_server, level_players
 from scheduler import set_active_session_resolver
 from static_server import start_static_server
 from Character import save_characters, handle_request_armory_gears, handle_alert_state_update, PaperDoll_Request
@@ -33,11 +33,18 @@ ENABLE_ADMIN_PANEL = False
 #===========#
 
 def _level_remove(level, session):
+    # Remove from registry
     s = level_registry.get(level)
     if s and session in s:
         s.remove(session)
-        if not s:
-            level_registry.pop(level, None)
+
+    # Remove from level_players
+    players = level_players.get(level)
+    if players:
+        level_players[level] = [
+            p for p in players if p.get("session") is not session
+        ]
+
 
 def new_transfer_token():
     """Allocate a persistent 16-bit token not in use."""
