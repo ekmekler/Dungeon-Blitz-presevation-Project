@@ -111,11 +111,6 @@ def send_premium_purchase(session, item_name: str, cost: int):
     session.conn.sendall(packet)
     print(f"[DEBUG] Deducted {cost} Mammoth Idols for {item_name}")
 
-def _send_error(conn, msg):
-    encoded = msg.encode("utf-8")
-    payload = struct.pack(">H", len(encoded)) + encoded
-    conn.sendall(struct.pack(">HH", 0x44, len(payload)) + payload)
-
 def build_destroy_entity_packet(entity_id: int) -> bytes:
     bb = BitBuffer()
     bb.write_method_4(entity_id)  # Entity ID

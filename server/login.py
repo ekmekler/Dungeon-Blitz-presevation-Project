@@ -13,8 +13,9 @@ from ai_logic import AI_ENABLED, ensure_ai_loop, run_ai_loop
 from bitreader import BitReader
 from constants import EntType
 from entity import Send_Entity_Data, ensure_level_npcs
-from globals import SECRET, session_by_token, _level_add, pending_world, current_characters, used_tokens, token_char
+from globals import SECRET, session_by_token, _level_add, pending_world, current_characters, used_tokens, token_char, all_sessions
 from level_config import LEVEL_CONFIG, get_spawn_coordinates
+from socials import get_group_for_session, online_group_members, update_session_group_cache, build_group_update_packet
 
 def handle_login_version(session, data, conn):
     br = BitReader(data[4:])
@@ -312,6 +313,14 @@ def handle_gameserver_login(session, data, conn):
     )
 
     conn.sendall(welcome)
+
+    gid, group = get_group_for_session(session)
+    if gid and group:
+        members = online_group_members(group, all_sessions)
+        update_session_group_cache(gid, members)
+        pkt = build_group_update_packet(members)
+        for member, _ in members:
+            member.conn.sendall(pkt)
 
     print(f"[{session.addr}] Welcome: {char['name']} (token {token})")
 

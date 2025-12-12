@@ -80,7 +80,7 @@ class ClientSession:
         # Misc
         self.player_data = {}
         self.running = True
-        self.group_members = []
+
 
     def stop(self):
         self.running = False
