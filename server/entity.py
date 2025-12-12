@@ -308,9 +308,7 @@ def build_entity_dict(eid, char, props):
             "abilities": char.get("learnedAbilities", []),
             "level": char.get("level", 1),
             "Talent_id": char.get("MasterClass", 0),
-            "equippedMount": char.get("equippedMount", 0),
-            "idle_reset": True,
-            "spawn_fx": True
+            "equippedMount": char.get("equippedMount", 0)
         })
 
     return ent_dict
