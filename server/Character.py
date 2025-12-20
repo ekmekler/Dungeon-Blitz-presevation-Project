@@ -86,8 +86,7 @@ DEFAULT_GEAR = {
 CHAR_SAVE_DIR = "saves"
 SAVE_PATH_TEMPLATE = "saves/{user_id}.json"
 
-def load_characters(user_id: str) -> list[dict]:
-    """Load all characters for a given user_id (new format)."""
+def load_characters(user_id: int) -> list[dict]:
     path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
     if not os.path.exists(path):
         return []
@@ -96,8 +95,7 @@ def load_characters(user_id: str) -> list[dict]:
     return data.get("characters", [])
 
 
-def save_characters(user_id: str, char_list: list[dict]):
-    """Save all characters for a user_id in the new format."""
+def save_characters(user_id: int, char_list: list[dict]):
     os.makedirs(CHAR_SAVE_DIR, exist_ok=True)
     path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
 
@@ -153,16 +151,12 @@ def PaperDoll_Request(session, data, conn):
         conn.sendall(struct.pack(">HH", 0x1A, 0))
         print(f"[0x19] Character '{req_name}' not found; sent empty 0x1A")
 
-def build_login_character_list_bitpacked(characters):
-    """
-    Builds the 0x15 login-character-list packet.
-    """
+def build_login_character_list_bitpacked(user_id: int, characters):
     buf = BitBuffer()
-    user_id = 1  # you’ll overwrite this per-session
     max_chars = 8
     char_count = len(characters)
 
-    buf.write_method_4(user_id)
+    buf.write_method_4(int(user_id))
     buf.write_method_393(max_chars)
     buf.write_method_393(char_count)
 
@@ -170,8 +164,9 @@ def build_login_character_list_bitpacked(characters):
         buf.write_method_13(char["name"])
         buf.write_method_13(char["class"])
         buf.write_method_6(char["level"], 6)
-    header = struct.pack(">HH", 0x15, len(buf.to_bytes()))
-    return header + buf.to_bytes()
+    payload = buf.to_bytes()
+    header = struct.pack(">HH", 0x15, len(payload))
+    return header + payload
 
 
 def handle_alert_state_update(session, data):

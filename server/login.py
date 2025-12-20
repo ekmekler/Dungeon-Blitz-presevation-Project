@@ -43,11 +43,11 @@ def handle_login_create(session, data, conn):
     password = br.read_method_26()
     legacy_auth_key = br.read_method_26()
 
-    session.user_id = get_or_create_user_id(email)
+    session.user_id = int(get_or_create_user_id(email))
     session.authenticated = True
     session.char_list = load_characters(session.user_id)
 
-    pkt = build_login_character_list_bitpacked(session.char_list)
+    pkt = build_login_character_list_bitpacked(session.user_id, session.char_list)
     conn.sendall(pkt)
 
     print(f"[{session.addr}] [0x13] Login/Create OK for {email} → {len(session.char_list)} characters")
@@ -81,7 +81,7 @@ def handle_login_authenticate(session, data, conn):
     session.char_list = session.player_data.get("characters", [])
     session.authenticated = True
 
-    pkt = build_login_character_list_bitpacked(session.char_list)
+    pkt = build_login_character_list_bitpacked(session.user_id, session.char_list)
     conn.sendall(pkt)
 
     print(f"[{session.addr}] [0x14] Login success for {email} → user_id={user_id}, {len(session.char_list)} chars")

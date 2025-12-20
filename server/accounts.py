@@ -26,42 +26,32 @@ def _atomic_write(path: str, data) -> None:
 
     os.replace(tf.name, path)
 
-def load_accounts() -> dict[str, str]:
-    """
-    Load Accounts.json and return a dict mapping email → user_id.
-    If the file is missing or corrupted, returns an empty dict.
-    """
-    try:
-        with open(_ACCOUNTS_PATH, "r", encoding="utf-8") as f:
+def load_accounts() -> dict[str, int]:
+    with open(_ACCOUNTS_PATH, "r", encoding="utf-8") as f:
             entries = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
-    return { e["email"]: e["user_id"] for e in entries }
+    return { e["email"]: int(e["user_id"]) for e in entries }
 
-def save_accounts_index(index: dict[str, str]) -> None:
-    """
-    Persist the email→user_id map to Accounts.json atomically.
-    """
-    entries = [ {"email": email, "user_id": uid} for email, uid in index.items() ]
+
+def save_accounts_index(index: dict[str, int]) -> None:
+    entries = [
+        {"email": email, "user_id": uid}
+        for email, uid in index.items()
+    ]
     with _lock:
         _atomic_write(_ACCOUNTS_PATH, entries)
 
-def get_or_create_user_id(email: str) -> str:
+def get_or_create_user_id(email: str) -> int:
     email = email.strip().lower()
     accounts = load_accounts()
 
-    # Return existing if present
     if email in accounts:
         return accounts[email]
 
-    # Generate a proper UUID4 with hyphens
-    user_id = str(uuid.uuid4())
+    user_id = max(accounts.values(), default=0) + 1
 
-    # Register and persist
     accounts[email] = user_id
     save_accounts_index(accounts)
 
-    # Initialize a new save file in the new format
     os.makedirs(_SAVES_DIR, exist_ok=True)
     save_path = os.path.join(_SAVES_DIR, f"{user_id}.json")
     _atomic_write(save_path, {"user_id": user_id, "characters": []})
