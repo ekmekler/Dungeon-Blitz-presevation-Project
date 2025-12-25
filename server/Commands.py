@@ -192,59 +192,6 @@ def handle_lockbox_reward(session, data):
 
     print(f"Lockbox reward: idx={idx}, name={name}, needs_str={needs_str}")
 
-def handle_gear_packet(session, raw_data):
-    payload = raw_data[4:]
-    br = BitReader(payload)
-
-    entity_id  = br.read_method_4()
-    prefix     = br.read_method_20(3)
-    nbits      = 2 * (prefix + 1)
-    slot1      = br.read_method_20(nbits)
-    gear_id    = br.read_method_6(GearType.GEARTYPE_BITSTOSEND)
-    slot       = slot1 - 1
-
-    print(f"[Gear] entity={entity_id}, slot={slot}, gear={gear_id}")
-    # 1) Locate and update the character in session.char_list
-    for char in session.char_list:
-        if char.get("name") != session.current_character:
-            continue
-
-        inv = char.setdefault("inventoryGears", [])
-        eq  = char.setdefault("equippedGears", [])
-
-        # Ensure equipped list has enough slots
-        while len(eq) < 6:
-            eq.append({"gearID": 0, "tier": 0, "runes": [0, 0, 0], "colors": [0, 0]})
-
-        # 1) Try to find gear in inventory
-        for item in inv:
-            if item.get("gearID") == gear_id:
-                gear_data = item.copy()
-                break
-        else:
-            # fallback default if not found (client will still fail visually, but we'll keep server consistent)
-            gear_data = {
-                "gearID": gear_id,
-                "tier": 0,
-                "runes": [0, 0, 0],
-                "colors": [0, 0]
-            }
-
-        # 2) Set gear in equipped slot
-        eq[slot] = gear_data
-
-        # 3) Ensure gear also exists in inventory (add if missing)
-        if not any(g.get("gearID") == gear_id for g in inv):
-            inv.append(gear_data.copy())  # keep dye/rune info consistent
-
-        break
-    # 2) Sync into session.player_data if still used
-    session.player_data["characters"] = session.char_list
-
-    # 3) Persist via helper
-    save_characters(session.user_id, session.char_list)
-    print(f"[Save] slot {slot} updated with gear {gear_id}, inventory count = {len(inv)}")
-
 
 def send_look_update_packet(session, entity_id, head, hair, mouth, face, gender, hair_color, skin_color):
     """

@@ -5,7 +5,7 @@ from BitBuffer import BitBuffer
 from Character import save_characters
 from Commands import build_loot_drop_packet
 from bitreader import BitReader
-from constants import LinkUpdater, Entity, PowerType, GearType, class_64, class_1, EntType
+from constants import LinkUpdater, Entity, PowerType, GearType, class_64, class_1, EntType, class_21
 from globals import send_consumable_update, build_change_offset_y_packet
 
                 # Helpers
@@ -17,6 +17,65 @@ def get_base_hp_for_level(level):
     if level >= len(Entity.PLAYER_HITPOINTS):
         level = len(Entity.PLAYER_HITPOINTS) - 1
     return Entity.PLAYER_HITPOINTS[level]
+
+def write_enttype_gear(bb, gear):
+    """
+    gear dict format:
+    {
+        gearID, tier,
+        rune1, rune2, rune3,
+        color1, color2
+    }
+    """
+    bb.write_method_6(gear["gearID"], GearType.GEARTYPE_BITSTOSEND)
+    bb.write_method_6(gear["tier"], GearType.const_176)
+
+    bb.write_method_6(gear.get("rune1", 0), class_64.const_101)
+    bb.write_method_6(gear.get("rune2", 0), class_64.const_101)
+    bb.write_method_6(gear.get("rune3", 0), class_64.const_101)
+
+    bb.write_method_6(gear.get("color1", 0), class_21.const_50)
+    bb.write_method_6(gear.get("color2", 0), class_21.const_50)
+
+def build_gear_change_packet(entity_id: int, equipped_gears: list[dict]) -> bytes:
+    """
+    equipped gears = list of 6 gear dicts (slots 1–6)
+    """
+    bb = BitBuffer()
+    bb.write_method_4(entity_id)
+
+    # Slots 1..6 (skip slot 0)
+    for slot in range(6):
+        gear = equipped_gears[slot] if slot < len(equipped_gears) else None
+
+        if gear and gear.get("gearID", 0) > 0:
+            bb.write_method_15(True)  # slot exists
+            bb.write_method_15(True)  # gear exists
+            write_enttype_gear(bb, gear)
+        else:
+            bb.write_method_15(True)  # slot exists
+            bb.write_method_15(False)  # empty slot → client builds No<Class><Slot>
+
+    payload = bb.to_bytes()
+    return struct.pack(">HH", 0xAF, len(payload)) + payload
+
+def broadcast_gear_change(session, all_sessions):
+    char = session.current_char_dict
+    if not char:
+        return
+
+    entity_id = session.clientEntID
+    equipped = char.get("equippedGears", [])
+
+    pkt = build_gear_change_packet(entity_id, equipped)
+
+    for other in all_sessions:
+        if (
+                other is not session
+                and other.player_spawned
+                and other.current_level == session.current_level
+        ):
+            other.conn.sendall(pkt)
 
         # game client function handlers
        #####################################
@@ -479,3 +538,54 @@ def handle_equip_rune(session,  data):
     payload = bb.to_bytes()
     packet = struct.pack(">HH", 0xB0, len(payload)) + payload
     session.conn.sendall(packet)
+
+def handle_update_single_gear(session, data, all_sessions):
+    br = BitReader(data[4:])
+
+    entity_id = br.read_method_4()
+    slot_raw  = br.read_method_236()        # 1-based
+    gear_id   = br.read_method_6(GearType.GEARTYPE_BITSTOSEND)
+
+    slot = slot_raw - 1  # convert to 0-based
+
+    # Locate active character
+    char = next(
+        (c for c in session.char_list if c.get("name") == session.current_character),
+        None
+    )
+
+    inv = char.setdefault("inventoryGears", [])
+    eq  = char.setdefault("equippedGears", [])
+
+    # Normalize equipped slots (6)
+    while len(eq) < 6:
+        eq.append({
+            "gearID": 0,
+            "tier": 0,
+            "runes": [0, 0, 0],
+            "colors": [0, 0],
+        })
+
+    # Find gear in inventory
+    gear_data = next(
+        (g for g in inv if g.get("gearID") == gear_id),
+        None
+    )
+
+    if gear_data:
+        gear_data = gear_data.copy()
+    else:
+        gear_data = {
+            "gearID": gear_id,
+            "tier": 0,
+            "runes": [0, 0, 0],
+            "colors": [0, 0],
+        }
+        inv.append(gear_data.copy())
+
+    # Apply to equipped slot
+    eq[slot] = gear_data
+
+    session.player_data["characters"] = session.char_list
+    save_characters(session.user_id, session.char_list)
+    broadcast_gear_change(session, all_sessions)
