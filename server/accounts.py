@@ -27,9 +27,15 @@ def _atomic_write(path: str, data) -> None:
     os.replace(tf.name, path)
 
 def load_accounts() -> dict[str, int]:
+    if not os.path.exists(_ACCOUNTS_PATH):
+        
+        with open(_ACCOUNTS_PATH, "w", encoding="utf-8") as f:
+            json.dump([], f)
+
     with open(_ACCOUNTS_PATH, "r", encoding="utf-8") as f:
-            entries = json.load(f)
-    return { e["email"]: int(e["user_id"]) for e in entries }
+        entries = json.load(f)
+
+    return {e["email"]: int(e["user_id"]) for e in entries}
 
 
 def save_accounts_index(index: dict[str, int]) -> None:
