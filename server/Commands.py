@@ -336,48 +336,23 @@ def handle_create_gearset(session, raw_data):
     session.conn.sendall(raw_data)
 
 def handle_name_gearset(session, raw_data):
-    """
-    Packet 0xC8: client sends the chosen name for a gear-set.
-    Payload is (slot_idx:3 bits, name:String with 16-bit length).
-    """
-    payload = raw_data[4:]
-    print(f"[Debug] Payload: {payload.hex()}")
-    br = BitReader(payload)
-    slot_idx = br.read_method_20(3)
-    print(f"[Debug] slot_idx: {slot_idx}, bit_index: {br.bit_index}")
-    length = br.read_method_20(16)
-    print(f"[Debug] String length: {length}")
-    if length > br.remaining_bits() // 8:
-        print(f"[Error] Invalid string length: {length}, remaining bytes: {br.remaining_bits() // 8}")
-        return
-    result_bytes = bytearray()
-    for _ in range(length):
-        result_bytes.append(br.read_method_20(8))
-    try:
-        name = result_bytes.decode('utf-8')
-    except UnicodeDecodeError:
-        name = result_bytes.decode('latin1')
-    print(f"[GearSet] Naming slot #{slot_idx} → {name} for {session.current_character}")
+    br = BitReader(raw_data[4:])
 
-    # Update in-memory save
-    pd = session.player_data
-    chars = pd.get("characters", [])
-    for char in chars:
-        if char.get("name") != session.current_character:
-            continue
-        gs = char.setdefault("gearSets", [])
-        if slot_idx < len(gs):
-            gs[slot_idx]["name"] = name
-        else:
-            print(f"[Error] Gearset slot {slot_idx} does not exist")
-            return
-        break
+    slot_idx = br.read_method_20(GearType.const_348)
+    name = br.read_method_26()
+
+    # Update active character
+    for char in session.player_data.get("characters", []):
+        if char.get("name") == session.current_character:
+            gearsets = char.setdefault("gearSets", [])
+            if slot_idx >= len(gearsets):
+                return
+            gearsets[slot_idx]["name"] = name
+            break
     else:
-        print(f"[WARNING] Character not found for name_gearset")
         return
 
     save_characters(session.user_id, session.char_list)
-    session.conn.sendall(raw_data)
 
 def handle_apply_gearset(session, raw_data):
     """
