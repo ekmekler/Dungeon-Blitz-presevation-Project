@@ -312,7 +312,6 @@ def boot_scan_all_saves():
             data = json.load(f)
 
         chars = data.get("characters", [])
-        dirty = False
         user_id = data.get("user_id")
 
         for char in chars:
@@ -351,7 +350,6 @@ def boot_scan_all_saves():
                 else:
                     mf["hasSession"] = False
                     mf["status"] = class_111.const_264
-                    dirty = True
 
             # ─── Talent research ───
             tr = char.get("talentResearch")
@@ -365,8 +363,6 @@ def boot_scan_all_saves():
             if not egg_rt:
                 char["EggResetTime"] = now + class_16.new_egg_set_time
                 egg_rt = char["EggResetTime"]
-                dirty = True
-
             schedule_hatchery_refresh(user_id, cname, egg_rt)
 
             # ─── Pet training ───
@@ -382,8 +378,3 @@ def boot_scan_all_saves():
                 rt = egg.get("ReadyTime", 0)
                 if rt > now:
                     schedule_egg_hatch(user_id, cname, rt)
-
-        if dirty:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            print(f"[SCHEDULER] Normalized {os.path.basename(path)}")
