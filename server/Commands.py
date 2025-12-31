@@ -4,7 +4,7 @@ import time
 
 from Character import save_characters, SAVE_PATH_TEMPLATE
 from bitreader import BitReader
-from constants import GearType, EntType, DyeType, Entity, class_3
+from constants import GearType, EntType, DyeType, Entity, class_3, Game
 from BitBuffer import BitBuffer
 from constants import get_dye_color
 from globals import build_start_skit_packet, send_premium_purchase
@@ -301,56 +301,45 @@ def handle_change_look(session, raw_data, all_sessions):
                 gender, hair_color, skin_color
             )
 
-def handle_create_gearset(session, raw_data):
-    """
-    Packet 0xC7: client wants to create a new gear-set slot.
-    Payload is a single uint: the new slot index.
-    """
-    payload = raw_data[4:]
-    br = BitReader(payload)
+def handle_create_gearset(session, data):
+    br = BitReader(data[4:])
     slot_idx = br.read_method_20(GearType.const_348)
-    print(f"[GearSet] Creating new slot #{slot_idx} for {session.current_character}")
 
-    # update in-memory save
-    pd = session.player_data
-    chars = pd.get("characters", [])
-    for char in chars:
-        if char.get("name") != session.current_character:
-            continue
-        gs = char.setdefault("gearSets", [])
-        # Insert a new gearset object with name and slots
-        gearset = {
-            "name": f"GearSet {slot_idx + 1}",
-            "slots": [0] * (EntType.MAX_SLOTS - 1)  # 6 slots
-        }
-        if slot_idx < len(gs):
-            gs[slot_idx] = gearset
-        else:
-            gs.append(gearset)
-        break
-    else:
-        print(f"[WARNING] Character not found for create_gearset")
-        return
+    char = next(
+        (c for c in session.char_list
+         if c.get("name") == session.current_character),
+        None
+    )
+    gearsets = char.setdefault("gearSets", [])
+
+    while len(gearsets) <= slot_idx:
+        if len(gearsets) >= Game.const_1057:
+            return
+
+        gearsets.append({
+            "name": f"GearSet {len(gearsets) + 1}",
+            "slots": [0] * EntType.MAX_SLOTS
+        })
 
     save_characters(session.user_id, session.char_list)
-    session.conn.sendall(raw_data)
 
-def handle_name_gearset(session, raw_data):
-    br = BitReader(raw_data[4:])
-
+def handle_name_gearset(session, data):
+    br = BitReader(data[4:])
     slot_idx = br.read_method_20(GearType.const_348)
     name = br.read_method_26()
 
-    # Update active character
-    for char in session.player_data.get("characters", []):
-        if char.get("name") == session.current_character:
-            gearsets = char.setdefault("gearSets", [])
-            if slot_idx >= len(gearsets):
-                return
-            gearsets[slot_idx]["name"] = name
-            break
-    else:
+    char = next(
+        (c for c in session.char_list
+         if c.get("name") == session.current_character),
+        None
+    )
+
+    gearsets = char.get("gearSets", [])
+    if slot_idx >= len(gearsets):
+        print("ERROR: gearset does not exist")
         return
+
+    gearsets[slot_idx]["name"] = name
 
     save_characters(session.user_id, session.char_list)
 
