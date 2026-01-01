@@ -300,5 +300,4 @@ def handle_gameserver_login(session, data, conn):
         payload = Send_Entity_Data(npc)
         conn.sendall(struct.pack(">HH", 0x0F, len(payload)) + payload)
         session.entities[npc["id"]] = npc
-
-    print(f"[{session.addr}] NPCs synced for level {session.current_level}")
+    #print(f"[{session.addr}] NPCs synced for level {session.current_level}")
