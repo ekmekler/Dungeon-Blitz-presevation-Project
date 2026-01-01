@@ -1,40 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <settings>
     <!-- Enable core dev modes -->
-    <!-- <DEVFLAG_MASTER_CLIENT /> -->  <!-- Local server sim on 127.0.0.1:7498 -->
-    <!-- <DEVFLAG_STANDALONE_CLIENT /> -->  <!-- Offline/single-player | this is still broken  -->
-    <!-- <DEVFLAG_SERVERLOCAL /> -->  <!-- Local connections -->
-    <!-- <DEVFLAG_ADDXMLDEVSETTINGS /> -->  <!-- Already set, but redundant OK -->
+    <!-- <DEVFLAG_MASTER_CLIENT /> -->
+    <!-- <DEVFLAG_STANDALONE_CLIENT /> -->
+    <!-- <DEVFLAG_SERVERLOCAL /> -->
 
 
     <!-- Debug visuals and tools -->
-    <!-- <DEVFLAG_SHOWENTITYCOLLISION /> -->  <!-- Show collision boxes -->
-    <!-- <DEVFLAG_SHOWENTITYGHOST /> -->  <!-- Ghost entities? -->
-    <!-- <DEVFLAG_SHOWPERFORMANCE /> -->  <!-- Perf monitor -->
-    <!-- <DEVFLAG_SHOWRESOURCEMONITOR /> -->  <!-- Resource usage -->
-    <!-- <DEVFLAG_DEVSPAWNENABLED /> -->  <!-- Spawn tools -->
-    <!--  <DEVFLAG_SPAWN_MONSTERS /> -->  <!-- Auto-spawn monsters -->
-    <!-- <DEVFLAG_DUMBMONSTERS /> -->  <!-- Dumb AI for testing -->
-    <!-- <DEVFLAG_SHOWWORLDCOLLISION /> -->  <!-- World collision debug -->
-    <!-- <DEVFLAG_SHOWPOWERRANGE /> -->  <!-- Power ranges -->
-    <!--  <DEVFLAG_SHOWBEHAVIOR /> -->  <!-- Entity behaviors -->
-    <!-- <DEVFLAG_SHOWCUES /> -->  <!-- UI cues -->
-    <!--  <DEVFLAG_PERFORMANCETEST /> -->
+    <!-- <DEVFLAG_SHOWENTITYCOLLISION /> -->
+    <!-- <DEVFLAG_SHOWENTITYGHOST /> -->
+    <!-- <DEVFLAG_SHOWPERFORMANCE /> -->
+    <!-- <DEVFLAG_SHOWRESOURCEMONITOR /> -->
+    <!-- <DEVFLAG_DEVSPAWNENABLED /> -->
+    <!-- <DEVFLAG_SPAWN_MONSTERS /> -->
+    <!-- <DEVFLAG_DUMBMONSTERS /> -->
+    <!-- <DEVFLAG_SHOWWORLDCOLLISION /> -->
+    <!-- <DEVFLAG_SHOWPOWERRANGE /> -->
+    <!-- <DEVFLAG_SHOWBEHAVIOR /> -->
+    <!-- <DEVFLAG_SHOWCUES /> -->
+    <!-- <DEVFLAG_PERFORMANCETEST /> -->
     <!-- <DEVFLAG_OUTLINE_REMOTE_ENTS /> -->
     <!-- <DEVFLAG_SHOWCHARACTERCREATE /> -->
 
-    <!-- Standalone overrides (from var_5 array; pick a map) -->
-    <!-- <STANDALONEMAPNAME value="LevelsHome.swf/a_Level_Home" /> -->  <!-- Starting map SWF/path -->
-    <!-- <STANDALONEMAPINTERNALNAME value="CraftTown" /> -->  <!-- Internal name -->
-    <!-- <STANDALONEMAPLEVEL value="1" /> -->  <!-- Map level -->
-    <!-- <STANDALONEBASELEVEL value="1" />  -->  <!-- Player base level -->
-    <!-- <STANDALONEPLAYERENTTYPE value="DevPaladin" /> -->  <!-- Player class (e.g., DevPaladin for dev) -->
-    <!-- <STANDALONEMOMENTPARAMS value="" /> -->  <!-- Extra params -->
-    <!-- <STANDALONEALTERPARAMS value="" /> -->  <!-- Alter params -->
-    <!-- <STANDALONEISINSTANCED value="true" /> -->  <!-- Instanced map? -->
+    <!-- Standalone overrides -->
+    <!-- <STANDALONEMAPNAME value="LevelsHome.swf/a_Level_Home" /> -->
+    <!-- <STANDALONEMAPINTERNALNAME value="CraftTown" /> -->
+    <!-- <STANDALONEMAPLEVEL value="1" /> -->
+    <!-- <STANDALONEBASELEVEL value="1" />  -->
+    <!-- <STANDALONEPLAYERENTTYPE value="DevPaladin" /> -->
+    <!-- <STANDALONEMOMENTPARAMS value="" /> -->
+    <!-- <STANDALONEALTERPARAMS value="" /> -->
+    <!-- <STANDALONEISINSTANCED value="true" /> -->
 
     <!-- Other options -->
-    <!-- <VAR_2032 value="127.0.0.1" /> --> <!-- Server IP override -->
+    <!-- <VAR_2032 value="127.0.0.1" /> -->
 
     <!-- not sure what the actual purpose is for these -->
     <!-- <DEVFLAG_NO_GRAPHICS /> -->
