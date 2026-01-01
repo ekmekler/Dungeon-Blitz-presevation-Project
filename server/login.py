@@ -294,7 +294,7 @@ def handle_gameserver_login(session, data, conn):
     if AI_ENABLED:
         ensure_ai_loop(session.current_level, run_ai_loop)
     else:
-        print(f"[AI] Skipping loop for level {session.current_level} (AI disabled)")
+        pass
 
     for npc in npcs.values():
         payload = Send_Entity_Data(npc)
