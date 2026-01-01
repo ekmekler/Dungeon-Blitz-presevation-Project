@@ -4,7 +4,8 @@ from BitBuffer import BitBuffer
 from Character import save_characters
 from bitreader import BitReader
 from constants import Entity, PowerType, GearType, class_64, class_1, EntType, class_21, Game
-from globals import send_consumable_update, build_change_offset_y_packet
+from globals import send_consumable_update, build_change_offset_y_packet, GS
+
 
                 # Helpers
     #####################################
@@ -579,45 +580,46 @@ def handle_update_single_gear(session, data, all_sessions):
 
 def handle_update_equipment(session, data):
     br = BitReader(data[4:])
-    entity_id = br.read_method_4()
+    entity_id = br.read_method_9()
 
-    char = next(
-        (c for c in session.char_list
-         if c.get("name") == session.current_character),
-        None
-    )
+    char = session.current_char_dict
     equipped = char.setdefault("equippedGears", [])
     inventory = char.setdefault("inventoryGears", [])
     SLOT_COUNT = EntType.MAX_SLOTS - 1
 
-    EMPTY = {
-        "gearID": 0,
-        "tier": 0,
-        "runes": [0, 0, 0],
-        "colors": [0, 0]
-    }
+    def empty_gear():
+        return {
+            "gearID": 0,
+            "tier": 0,
+            "runes": [0, 0, 0],
+            "colors": [0, 0],
+        }
 
-    if len(equipped) < SLOT_COUNT:
-        equipped.extend(EMPTY.copy() for _ in range(SLOT_COUNT - len(equipped)))
-    elif len(equipped) > SLOT_COUNT:
-        del equipped[SLOT_COUNT:]
+    while len(equipped) < SLOT_COUNT:
+        equipped.append(empty_gear())
 
     for slot in range(SLOT_COUNT):
-        changed = br.read_method_20(1)
+        changed = br.read_method_15()
 
         if not changed:
             continue
 
-        gear_id = br.read_method_6(GearType.GEARTYPE_BITSTOSEND)
+        gear_id = br.read_method_20(GearType.GEARTYPE_BITSTOSEND)
 
         item = next(
             (g for g in inventory if g.get("gearID") == gear_id),
             None
         )
 
-        equipped[slot] = item.copy() if item else EMPTY.copy()
+        equipped[slot] = item.copy() if item else {
+            "gearID": gear_id,
+            "tier": 0,
+            "runes": [0, 0, 0],
+            "colors": [0, 0],
+        }
 
     save_characters(session.user_id, session.char_list)
+    broadcast_gear_change(session, GS.all_sessions)
 
 
 def handle_create_gearset(session, data):

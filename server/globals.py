@@ -19,11 +19,12 @@ class GlobalState:
         self.pending_world = {}# Done
         self.level_npcs = {}# Done
         self.level_players = {}# Done
+        self.all_sessions = []
 
 # a single shared instance:
 GS = GlobalState()
 
-all_sessions = []
+all_sessions = GS.all_sessions
 
 
 
