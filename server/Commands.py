@@ -4,7 +4,6 @@ import time
 
 from Character import save_characters
 from bitreader import BitReader
-from combat import broadcast_gear_change
 from constants import GearType, EntType, DyeType, Entity, class_3
 from BitBuffer import BitBuffer
 from constants import get_dye_color
@@ -302,42 +301,6 @@ def handle_change_look(session, raw_data, all_sessions):
                 gender, hair_color, skin_color
             )
 
-
-def handle_apply_gearset(session, raw_data):
-    """
-    Packet 0xC6: client assigns currently equipped gears to a gearset slot.
-    Payload is a single uint: the gearset slot index (3 bits).
-    """
-    payload = raw_data[4:]
-    br = BitReader(payload)
-    slot_idx = br.read_method_20(GearType.const_348)
-    print(f"[GearSet] Assigning equipped gears to gearset #{slot_idx} for {session.current_character}")
-
-    # Update in-memory save
-    pd = session.player_data
-    chars = pd.get("characters", [])
-    for char in chars:
-        if char.get("name") != session.current_character:
-            continue
-        gs = char.get("gearSets", [])
-        if slot_idx >= len(gs):
-            print(f"[Error] Gearset slot {slot_idx} does not exist")
-            return
-        eq = char.get("equippedGears", [])
-        if len(eq) != EntType.MAX_SLOTS - 1:
-            print(f"[Warning] equippedGears has {len(eq)} slots, expected {EntType.MAX_SLOTS - 1}")
-            return
-        # Copy gear IDs from equippedGears to gearSets[slot_idx]["slots"]
-        gear_ids = [item.get("gearID", 0) for item in eq]
-        gs[slot_idx]["slots"] = gear_ids
-        print(f"[Debug] Assigned gear IDs to gearset #{slot_idx}: {gear_ids}")
-        break
-    else:
-        print(f"[WARNING] Character not found for apply_gearset")
-        return
-
-    save_characters(session.user_id, session.char_list)
-    session.conn.sendall(raw_data)
 
 def handle_hp_increase_notice(session, data):
        pass

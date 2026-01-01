@@ -21,11 +21,11 @@ from skills import handle_skill_trained_claim, handle_skill_research_cancel_requ
 from combat import handle_entity_destroy, handle_buff_tick_dot, handle_respawn_broadcast, handle_request_respawn, \
     handle_power_hit, handle_projectile_explode, handle_add_buff, handle_remove_buff, handle_change_max_speed, \
     handle_power_cast, handle_change_offset_y, handle_char_regen, handle_equip_rune, handle_update_single_gear, \
-    handle_char_regen_tick, handle_update_equipment, handle_create_gearset, handle_name_gearset
+    handle_char_regen_tick, handle_update_equipment, handle_create_gearset, handle_name_gearset, handle_update_gearset
 from buildings import handle_building_claim, handle_building_upgrade, handle_building_speed_up_request, handle_cancel_building_upgrade
 from socials import handle_zone_panel_request, handle_public_chat, handle_private_message, handle_room_thought, handle_start_skit, handle_emote_begin, handle_group_invite, handle_query_message_answer, handle_map_location_update, handle_group_kick, handle_group_leave, handle_group_leader, handle_send_group_chat
 from pets import handle_equip_pets, handle_mount_equip_packet, handle_request_hatchery_eggs, handle_train_pet, handle_pet_training_collect, handle_pet_training_cancel, handle_pet_speed_up, handle_egg_hatch, handle_egg_speed_up, handle_collect_hatched_egg, handle_cancel_egg_hatch
-from Commands import (handle_apply_dyes, handle_change_look, handle_apply_gearset, handle_hp_increase_notice, handle_lockbox_reward,
+from Commands import (handle_apply_dyes, handle_change_look, handle_hp_increase_notice, handle_lockbox_reward,
                       handle_linkupdater,
                       handle_talk_to_npc, handle_queue_potion, handle_badge_request, handle_grant_reward)
 
@@ -343,6 +343,8 @@ def handle_client(session: ClientSession):
                 handle_create_gearset(session, data)
             elif pkt == 0xC8:
                 handle_name_gearset(session, data)
+            elif pkt == 0xC6:
+                handle_update_gearset(session, data)
             ############################################
 
             # buildings.py
@@ -441,8 +443,6 @@ def handle_client(session: ClientSession):
                 handle_change_look(session, data, all_sessions)
             elif pkt == 0xBA:
                 handle_apply_dyes(session, data, all_sessions)
-            elif pkt == 0xC6:
-                handle_apply_gearset(session, data)
             elif pkt == 0x107:
                 handle_lockbox_reward(session, data)
             elif pkt == 0x10E:

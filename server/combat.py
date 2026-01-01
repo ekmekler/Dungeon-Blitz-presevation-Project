@@ -664,3 +664,32 @@ def handle_name_gearset(session, data):
     gearsets[slot_idx]["name"] = name
 
     save_characters(session.user_id, session.char_list)
+
+
+def handle_update_gearset(session, data):
+    br = BitReader(data[4:])
+    gearset_index = br.read_method_20(GearType.const_348)
+    char = session.current_char_dict
+
+    gearsets = char.setdefault("gearSets", [])
+    if gearset_index >= len(gearsets):
+        print("[0xC6] Invalid gearset index", gearset_index)
+        return
+
+    equipped = char.get("equippedGears", [])
+
+    gs = gearsets[gearset_index]
+    slots = gs.setdefault("slots", [0] * 7)
+
+    if len(slots) < 7:
+        slots.extend([0] * (7 - len(slots)))
+    elif len(slots) > 7:
+        del slots[7:]
+
+    for i in range(6):
+        gear_id = int(equipped[i].get("gearID", 0)) if i < len(equipped) else 0
+        slots[i + 1] = gear_id
+
+    save_characters(session.user_id, session.char_list)
+
+

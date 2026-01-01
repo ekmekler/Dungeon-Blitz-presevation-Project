@@ -150,9 +150,19 @@ def Player_Data_Packet(char: dict,
         for gs in gear_sets:
             buf.write_method_13(gs.get("name", ""))
             slots = gs.get("slots", [])
-            slots = (slots + [0] * 6)[:6]
-            for gear_id in slots:
-                buf.write_method_11(gear_id, GearType.GEARTYPE_BITSTOSEND)
+
+            # index 0 is not used
+            if len(slots) < 7:
+                slots = slots + [0] * (7 - len(slots))
+            elif len(slots) > 7:
+                slots = slots[:7]
+
+            buf.write_method_11(slots[1], GearType.GEARTYPE_BITSTOSEND)  # armor
+            buf.write_method_11(slots[2], GearType.GEARTYPE_BITSTOSEND)  # gloves
+            buf.write_method_11(slots[3], GearType.GEARTYPE_BITSTOSEND)  # boots
+            buf.write_method_11(slots[4], GearType.GEARTYPE_BITSTOSEND)  # hat
+            buf.write_method_11(slots[5], GearType.GEARTYPE_BITSTOSEND)  # sword
+            buf.write_method_11(slots[6], GearType.GEARTYPE_BITSTOSEND)  # shield
 
         # ──────────────(Keybinds)──────────────
         buf.write_method_11(0, 1)  # no keybinds
