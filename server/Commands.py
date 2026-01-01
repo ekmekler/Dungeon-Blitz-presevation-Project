@@ -11,6 +11,49 @@ from globals import build_start_skit_packet, send_premium_purchase
 from missions import get_mission_extra
 
 
+def handle_update_equipment(session, data):
+    br = BitReader(data[4:])
+    entity_id = br.read_method_4()
+
+    char = next(
+        (c for c in session.char_list
+         if c.get("name") == session.current_character),
+        None
+    )
+    equipped = char.setdefault("equippedGears", [])
+    inventory = char.setdefault("inventoryGears", [])
+    SLOT_COUNT = EntType.MAX_SLOTS - 1
+
+    EMPTY = {
+        "gearID": 0,
+        "tier": 0,
+        "runes": [0, 0, 0],
+        "colors": [0, 0]
+    }
+
+    if len(equipped) < SLOT_COUNT:
+        equipped.extend(EMPTY.copy() for _ in range(SLOT_COUNT - len(equipped)))
+    elif len(equipped) > SLOT_COUNT:
+        del equipped[SLOT_COUNT:]
+
+    for slot in range(SLOT_COUNT):
+        changed = br.read_method_20(1)
+
+        if not changed:
+            continue
+
+        gear_id = br.read_method_6(GearType.GEARTYPE_BITSTOSEND)
+
+        item = next(
+            (g for g in inventory if g.get("gearID") == gear_id),
+            None
+        )
+
+        equipped[slot] = item.copy() if item else EMPTY.copy()
+
+    save_characters(session.user_id, session.char_list)
+
+
 def handle_create_gearset(session, data):
     br = BitReader(data[4:])
     slot_idx = br.read_method_20(GearType.const_348)
@@ -379,62 +422,6 @@ def handle_apply_gearset(session, raw_data):
 
     save_characters(session.user_id, session.char_list)
     session.conn.sendall(raw_data)
-
-def handle_update_equipment(session, raw_data):
-    """
-    Packet 0x30: client updates equipped gears for a gearset.
-    Payload is (entity_id, followed by 6 slots: 1-bit changed flag, optional gear_id).
-    """
-    payload = raw_data[4:]
-    print(f"[Debug] Payload: {payload.hex()}")
-    br = BitReader(payload)
-    entity_id = br.read_method_4()
-    print(f"[Equipment] Updating for entity={entity_id}, character={session.current_character}")
-
-    # Update in-memory save
-    pd = session.player_data
-    chars = pd.get("characters", [])
-    for char in chars:
-        if char.get("name") != session.current_character:
-            continue
-        eq = char.setdefault("equippedGears", [])
-        inv = char.setdefault("inventoryGears", [])
-        # Ensure equippedGears has 6 slots
-        while len(eq) < EntType.MAX_SLOTS - 1:
-            eq.append({"gearID": 0, "tier": 0, "runes": [0, 0, 0], "colors": [0, 0]})
-        if len(eq) > EntType.MAX_SLOTS - 1:
-            eq[:] = eq[:EntType.MAX_SLOTS - 1]
-        # Process 6 slots
-        updates = {}
-        for slot in range(EntType.MAX_SLOTS - 1):
-            if br.remaining_bits() < 1:
-                print(f"[Error] Not enough bits to read slot {slot} changed flag")
-                return
-            changed = br.read_method_20(1)
-            if changed:
-                if br.remaining_bits() < GearType.GEARTYPE_BITSTOSEND:
-                    print(f"[Error] Not enough bits to read gear ID for slot {slot}")
-                    return
-                gear_id = br.read_method_6(GearType.GEARTYPE_BITSTOSEND)
-                updates[slot] = gear_id
-        # Apply updates
-        for slot, gear_id in updates.items():
-            for item in inv:
-                if item.get("gearID") == gear_id:
-                    eq[slot] = item.copy()
-                    break
-            else:
-                print(f"[Warning] Gear ID {gear_id} not found in inventory for slot {slot}")
-                eq[slot] = {"gearID": 0, "tier": 0, "runes": [0, 0, 0], "colors": [0, 0]}
-        print(f"[Equipment] Updated slots: {updates}")
-        break
-    else:
-        print(f"[WARNING] Character not found for update_equipment")
-        return
-
-    save_characters(session.user_id, session.char_list)
-
-
 
 def handle_hp_increase_notice(session, data):
        pass
