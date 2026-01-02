@@ -294,7 +294,7 @@ def handle_client(session: ClientSession):
             elif pkt == 0xDE:
                 handle_skill_speed_up_request(session, data)
             elif pkt == 0xBE:
-                handle_start_skill_training(session, data, conn)
+                handle_start_skill_training(session, data)
             elif pkt == 0xBD:
                 handle_equip_active_skills(session, data)
             ############################################
@@ -418,11 +418,11 @@ def handle_client(session: ClientSession):
             # Character.py
             ############################################
             elif pkt == 0xF4:
-                handle_request_armory_gears(session, data, conn)
+                handle_request_armory_gears(session, data)
             elif pkt == 0x113:
                 handle_alert_state_update(session, data)
             elif pkt == 0x19:
-                PaperDoll_Request(session, data, conn)
+                PaperDoll_Request(session, data)
             ############################################
 
             # globals.py
@@ -434,7 +434,7 @@ def handle_client(session: ClientSession):
             # commands.py
             ############################################
             elif pkt == 0x8D:
-                handle_badge_request(session, data, conn)
+                handle_badge_request(session, data)
             elif pkt == 0xA2:
                 handle_linkupdater(session, data)
             elif pkt == 0x7A:

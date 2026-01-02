@@ -59,7 +59,7 @@ def handle_skill_speed_up_request(session, data):
     save_characters(session.user_id, session.char_list)
     send_skill_complete_packet(session, research["abilityID"])
 
-def handle_start_skill_training(session, data, conn):
+def handle_start_skill_training(session, data):
     br = BitReader(data[4:], debug=True)
     ability_id = br.read_method_20(7)
     rank       = br.read_method_20(4)

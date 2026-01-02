@@ -38,7 +38,7 @@ def build_level_gears_packet(gears: list[tuple[int, int]]) -> bytes:
     payload = buf.to_bytes()
     return struct.pack(">HH", 0xF5, len(payload)) + payload
 
-def handle_request_armory_gears(session, data, conn):
+def handle_request_armory_gears(session, data):
     br = BitReader(data[4:])
     player_token = br.read_method_9()
 
@@ -47,7 +47,7 @@ def handle_request_armory_gears(session, data, conn):
     # Build and send the 0xF5 packet
     gears = get_inventory_gears(char)
     pkt = build_level_gears_packet(gears)
-    conn.sendall(pkt)
+    session.conn.sendall(pkt)
 
 
 def get_inventory_gears(char: dict) -> list[tuple[int, int]]:
@@ -138,7 +138,7 @@ def build_paperdoll_packet(char):
     return buf.to_bytes()
 
 
-def PaperDoll_Request(session, data, conn):
+def PaperDoll_Request(session, data):
     br = BitReader(data[4:])
     req_name = br.read_method_26()
 
@@ -146,9 +146,9 @@ def PaperDoll_Request(session, data, conn):
 
     if char:
         payload = build_paperdoll_packet(char)
-        conn.sendall(struct.pack(">HH", 0x1A, len(payload)) + payload)
+        session.conn.sendall(struct.pack(">HH", 0x1A, len(payload)) + payload)
     else:
-        conn.sendall(struct.pack(">HH", 0x1A, 0))
+        session.conn.sendall(struct.pack(">HH", 0x1A, 0))
         print(f"[0x19] Character '{req_name}' not found; sent empty 0x1A")
 
 def build_login_character_list_bitpacked(user_id: int, characters):
