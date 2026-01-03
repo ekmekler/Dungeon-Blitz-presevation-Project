@@ -1,3 +1,21 @@
+
+from Character import handle_request_armory_gears, handle_alert_state_update, PaperDoll_Request
+from dev import DEVFLAG_STANDALONE_CLIENT
+from entity import handle_entity_full_update
+from globals import Client_Crash_Reports
+
+from Commands import handle_badge_request, handle_linkupdater, handle_talk_to_npc, handle_change_look, handle_apply_dyes, handle_lockbox_reward, handle_queue_potion, handle_hp_increase_notice, handle_grant_reward
+from Forge import handle_start_forge, handle_forge_speed_up_packet, handle_collect_forge_charm, handle_cancel_forge, handle_use_forge_xp_consumable, handle_allocate_magic_forge_artisan_skill_points, handle_magic_forge_reroll
+from buildings import handle_building_upgrade, handle_building_speed_up_request, handle_cancel_building_upgrade, handle_building_claim
+from combat import handle_entity_destroy, handle_buff_tick_dot, handle_respawn_broadcast, handle_request_respawn, handle_power_hit, handle_projectile_explode, handle_add_buff, handle_remove_buff, handle_change_max_speed, handle_power_cast, handle_change_offset_y, handle_char_regen, handle_char_regen_tick, handle_equip_rune, handle_update_equipment, handle_update_single_gear, handle_create_gearset, handle_name_gearset, handle_update_gearset
+from level_config import handle_open_door, handle_level_transfer_request, handle_request_door_state, handle_entity_incremental_update
+from login import handle_login_version, handle_login_create, handle_login_authenticate, handle_login_character_create, handle_character_select, handle_gameserver_login
+from pets import handle_equip_pets, handle_mount_equip_packet, handle_request_hatchery_eggs, handle_train_pet, handle_pet_training_collect, handle_pet_training_cancel, handle_pet_speed_up, handle_egg_hatch, handle_egg_speed_up, handle_collect_hatched_egg, handle_cancel_egg_hatch
+from skills import handle_skill_trained_claim, handle_skill_research_cancel_request, handle_skill_speed_up_request, handle_start_skill_training, handle_equip_active_skills
+from socials import handle_zone_panel_request, handle_public_chat, handle_private_message, handle_room_thought, handle_start_skit, handle_emote_begin, handle_group_invite, handle_query_message_answer, handle_map_location_update, handle_group_kick, handle_group_leave, handle_group_leader, handle_send_group_chat
+from talent import handle_respec_talent_tree, handle_allocate_talent_tree_points, handle_talent_claim, handle_talent_speedup, handle_train_talent_point, handle_clear_talent_research, handle_active_talent_change_request
+
+
 # Pet Related Packets
 #===================================
 const_1262 = 0xF0 # PKTTYPE_PET_HATCH_OR_TRAIN
@@ -356,3 +374,161 @@ const_1358 = 0xb9
 const_1415 = 0xce
 const_933 = 0x18
 #===================================
+
+def ignore(session, data):
+    return
+
+PACKET_HANDLERS = {
+
+    # Login.py
+    ############################################
+    0x11:   handle_login_version,
+    0x13:   handle_login_create,
+    0x14:   handle_login_authenticate,
+    0x17:   handle_login_character_create,
+    0x16:   handle_character_select,
+    0x1f:   handle_gameserver_login, # Welcome / Player_Data (finalize level transfer and spawn NPCs)
+    ############################################
+
+    # dev.py
+    ############################################
+    0x1E:   DEVFLAG_STANDALONE_CLIENT,
+    ############################################
+
+    # level_config.py
+    ############################################
+    0x2D:   handle_open_door,
+    0x1D:   handle_level_transfer_request, # Transfer Ready (prepare ENTER_WORLD, do NOT finalize session.current_level)
+    0x41:   handle_request_door_state,
+    0x07:   handle_entity_incremental_update,
+    ############################################
+
+    # forge.py
+    ############################################
+    0xB1:   handle_start_forge,
+    0xE2:   handle_forge_speed_up_packet,
+    0xD0:   handle_collect_forge_charm,
+    0xE1:   handle_cancel_forge,
+    0x110:  handle_use_forge_xp_consumable,
+    0xD3:   handle_allocate_magic_forge_artisan_skill_points,
+    0xCF:   handle_magic_forge_reroll,
+    ############################################
+
+    # talent.py
+    ############################################
+    0xD2:   handle_respec_talent_tree,
+    0xC0:   handle_allocate_talent_tree_points,
+    0xD6:   handle_talent_claim,
+    0xE0:   handle_talent_speedup,
+    0xD4:   handle_train_talent_point,
+    0xDF:   handle_clear_talent_research,
+    0xC3:   handle_active_talent_change_request,
+    ############################################
+
+    # skills.py
+    ############################################
+    0xD1:   handle_skill_trained_claim,
+    0xDD:   handle_skill_research_cancel_request,
+    0xDE:   handle_skill_speed_up_request,
+    0xBE:   handle_start_skill_training,
+    0xBD:   handle_equip_active_skills,
+    ############################################
+
+    # entity.py
+    ############################################
+    0x08:   handle_entity_full_update,
+    ############################################
+
+    # combat.py
+    ############################################
+    0x0D:   handle_entity_destroy,
+    0x79:   handle_buff_tick_dot,
+    0x82:   handle_respawn_broadcast,
+    0x77:   handle_request_respawn,
+    0x0A:   handle_power_hit,
+    0x0E:   handle_projectile_explode,
+    0x0B:   handle_add_buff,
+    0x0C:   handle_remove_buff,
+    0x8A:   handle_change_max_speed,
+    0x09:   handle_power_cast,
+    0x7D:   handle_change_offset_y,
+    0x78:   handle_char_regen,
+    0x100:  handle_char_regen_tick,  # this one seems to be used only when "DEVFLAG_STANDALONE_CLIENT" has been enabled
+    0xB0:   handle_equip_rune,
+    0x31:   handle_update_single_gear,
+    0x30:   handle_update_equipment,
+    0xC7:   handle_create_gearset,
+    0xC8:   handle_name_gearset,
+    0xC6:   handle_update_gearset,
+    ############################################
+
+    # buildings.py
+    ############################################
+    0xD7:   handle_building_upgrade,
+    0xDC:   handle_building_speed_up_request,
+    0xDB:   handle_cancel_building_upgrade,
+    0xD9:   handle_building_claim,
+    ############################################
+
+    # socials.py
+    ############################################
+    0x95:   handle_zone_panel_request,
+    0x2C:   handle_public_chat,
+    0x46:   handle_private_message,
+    0x76:   handle_room_thought,
+    0xC5:   handle_start_skit,
+    0x7E:   handle_emote_begin,
+    0x65:   handle_group_invite,
+    0x59:   handle_query_message_answer,
+    0x8b:   handle_map_location_update,
+    0x67:   handle_group_kick,
+    0x66:   handle_group_leave,
+    0x68:   handle_group_leader,
+    0x63:   handle_send_group_chat,
+    ############################################
+
+    # pets.py
+    ############################################
+    0xB3:   handle_equip_pets,
+    0xB2:   handle_mount_equip_packet,
+    0xE4:   handle_request_hatchery_eggs,
+    0xEC:   handle_train_pet,
+    0xEF:   handle_pet_training_collect,
+    0xED:   handle_pet_training_cancel,
+    0xF0:   handle_pet_speed_up,
+    0xE6:   handle_egg_hatch,
+    0xE9:   handle_egg_speed_up,
+    0xEA:   handle_collect_hatched_egg,
+    0xE8:   handle_cancel_egg_hatch,
+    ############################################
+
+    # Character.py
+    ############################################
+    0xF4:   handle_request_armory_gears,
+    0x113:  handle_alert_state_update,
+    0x19:   PaperDoll_Request,
+    ############################################
+
+    # globals.py
+    ############################################
+    0x7C:   Client_Crash_Reports,
+    ############################################
+
+    # commands.py
+    ############################################
+    0x8D:   handle_badge_request,
+    0xA2:   handle_linkupdater,
+    0x7A:   handle_talk_to_npc,
+    0x8E:   handle_change_look,
+    0xBA:   handle_apply_dyes,
+    0x107:  handle_lockbox_reward,
+    0x10E:  handle_queue_potion,
+    0xBB:   handle_hp_increase_notice,
+    0x2A:   handle_grant_reward,
+    ############################################
+
+     # other
+     ############################################
+     0xCC: ignore # Client sends this when a new skill is equipped,actual hotbar update follows in 0xBD: handle_equip_active_skills.
+
+}
