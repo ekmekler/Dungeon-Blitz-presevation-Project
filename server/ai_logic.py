@@ -3,7 +3,7 @@ import time
 import threading
 import struct
 from BitBuffer import BitBuffer
-from globals import all_sessions, GS
+from globals import GS
 
 #AI needs a lot more work to be done so will keep it off for now
 AI_ENABLED = False
@@ -43,7 +43,7 @@ def update_npc_physics(npc, dt=TIMESTEP, steps=18):
     npc["velocity_x"] = vx
 
 def broadcast_npc_move(npc, level_name, delta_x, delta_y, delta_vx):
-    recipients = [s for s in all_sessions if s.player_spawned and s.current_level == level_name]
+    recipients = [s for s in GS.all_sessions if s.player_spawned and s.current_level == level_name]
 
     bb = BitBuffer()
     bb.write_method_4(npc["id"])

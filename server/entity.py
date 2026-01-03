@@ -314,13 +314,13 @@ def build_entity_dict(eid, char, props):
     return ent_dict
 
 
-def send_existing_entities_to_joiner(joiner, all_sessions):
+def send_existing_entities_to_joiner(joiner):
     """
     Send spawn packets (Send_Entity_Data) ONLY for players in the same level
     to the joining player.
     NPCs are skipped and should be spawned separately by the level loader.
     """
-    for other in all_sessions:
+    for other in GS.all_sessions:
         if other is joiner:
             continue
         if not other.player_spawned or other.current_level != joiner.current_level:
@@ -464,7 +464,7 @@ def handle_entity_full_update(session, data):
     # First-time world load for this player
     if not session.player_spawned:
         session.player_spawned = True
-        send_existing_entities_to_joiner(session, GS.all_sessions)
+        send_existing_entities_to_joiner(session)
 
         # Broadcast THIS player’s spawn to others
         char = next(

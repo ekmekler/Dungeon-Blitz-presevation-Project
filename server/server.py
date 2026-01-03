@@ -7,7 +7,7 @@ import time
 
 from PKTTYPES import PACKET_HANDLERS
 from PolicyServer import start_policy_server
-from globals import all_sessions, HOST, PORTS, handle_entity_destroy_server, GS
+from globals import HOST, PORTS, handle_entity_destroy_server, GS
 from scheduler import set_active_session_resolver
 from static_server import start_static_server
 from Character import save_characters
@@ -42,7 +42,7 @@ def new_transfer_token():
            return t
 
 def find_active_session(user_id, char_name):
-    for s in all_sessions:
+    for s in GS.all_sessions:
         if getattr(s, 'user_id', None) == user_id and getattr(s, 'current_character', None) == char_name and s.authenticated:
             return s
     return None
@@ -140,7 +140,7 @@ class ClientSession:
         self.save_player_position()
 
         if self.player_spawned and self.clientEntID is not None:
-            handle_entity_destroy_server(self, self.clientEntID, all_sessions=all_sessions)
+            handle_entity_destroy_server(self, self.clientEntID, all_sessions=GS.all_sessions)
             #print("destroyed entity removal")
 
         try:
@@ -155,8 +155,8 @@ class ClientSession:
         if self.player_spawned and self.current_level:
             _level_remove(self.current_level, self)
 
-        if self in all_sessions:
-            all_sessions.remove(self)
+        if self in GS.all_sessions:
+            GS.all_sessions.remove(self)
 
 
 def handle_client(session: ClientSession):
@@ -217,7 +217,7 @@ def accept_connections(s, port):
     while True:
         conn, addr = s.accept()
         session = ClientSession(conn, addr)
-        all_sessions.append(session)
+        GS.all_sessions.append(session)
         threading.Thread(target=handle_client, args=(session,), daemon=True).start()
 
 def start_servers():
@@ -240,7 +240,7 @@ if __name__ == "__main__":
         try:
             from admin_panel import run_admin_panel
 
-            threading.Thread(target=run_admin_panel,args=(lambda: all_sessions, 5000),daemon=True).start()
+            threading.Thread(target=run_admin_panel,args=(lambda: GS.all_sessions, 5000),daemon=True).start()
             print("Debug Panel running on http://127.0.0.1:5000/")
         except ModuleNotFoundError:
             print(
