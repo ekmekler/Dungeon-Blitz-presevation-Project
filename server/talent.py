@@ -305,9 +305,8 @@ def send_active_talent_tree_data(session, entity_id):
     pkt = struct.pack(">HH", 0xC1, len(payload)) + payload
     session.conn.sendall(pkt)
 
-def handle_active_talent_change_request(session, raw_data):
-    payload = raw_data[4:]
-    br = BitReader(payload)
+def handle_active_talent_change_request(session, data):
+    br = BitReader(data[4:])
     entity_id       = br.read_method_4()
     master_class_id = br.read_method_6(Game.const_209)
 
