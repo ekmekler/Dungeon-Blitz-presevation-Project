@@ -1,6 +1,6 @@
 
 from Character import handle_request_armory_gears, handle_alert_state_update, PaperDoll_Request
-from dev import DEVFLAG_STANDALONE_CLIENT
+from dev import DEVFLAG_MASTER_CLIENT
 from entity import handle_entity_full_update
 from globals import Client_Crash_Reports
 
@@ -392,7 +392,7 @@ PACKET_HANDLERS = {
 
     # dev.py
     ############################################
-    0x1E:   DEVFLAG_STANDALONE_CLIENT,
+    0x1E:   DEVFLAG_MASTER_CLIENT,
     ############################################
 
     # level_config.py

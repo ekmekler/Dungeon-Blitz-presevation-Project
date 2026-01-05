@@ -7,7 +7,7 @@ from login import handle_gameserver_login
 """
 Some context : 
 
-if "<DEVFLAG_STANDALONE_CLIENT />" is enabled in the "devSettings" 
+if "<DEVFLAG_MASTER_CLIENT />" is enabled in the "devSettings" 
 the client will send a "0x1E" packet instead of the normal "0x1f" packet
 this code is just good enough to get the player loading in game nothing more 
 i played around for a bit and activating this option dint seem to actually provide anything of value
@@ -24,7 +24,7 @@ def build_fake_login_packet(token):
     body = bb.to_bytes()
     return struct.pack(">HH", 0x1F, len(body)) + body
 
-def DEVFLAG_STANDALONE_CLIENT(session, data):
+def DEVFLAG_MASTER_CLIENT(session, data):
     br = BitReader(data[4:])
     value = br.read_method_9()
     boolean = br.read_method_15()
