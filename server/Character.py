@@ -3,11 +3,9 @@ import json
 import struct
 
 from BitBuffer import BitBuffer
+from accounts import save_characters
 from bitreader import BitReader
 from constants import GearType, Game
-
-CHAR_SAVE_DIR = "saves"
-SAVE_PATH_TEMPLATE = "saves/{user_id}.json"
 
 # Hints Do not delete
 """
@@ -29,27 +27,6 @@ def load_class_template(class_name: str) -> dict:
     path = os.path.join("data", f"{class_name.lower()}_template.json")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
-def load_characters(user_id: int) -> list[dict]:
-    path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
-    if not os.path.exists(path):
-        return []
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return data.get("characters", [])
-
-
-def save_characters(user_id: int, char_list: list[dict]):
-    os.makedirs(CHAR_SAVE_DIR, exist_ok=True)
-    path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
-
-    data = {
-        "user_id": user_id,
-        "characters": char_list
-    }
-
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 # ──────────────── Default full gear definitions ────────────────

@@ -5,8 +5,9 @@ import struct
 from threading import Lock
 from BitBuffer import BitBuffer
 
+SAVE_PATH_TEMPLATE = "saves/{user_id}.json"
+CHAR_SAVE_DIR = "saves"
 _ACCOUNTS_PATH = "Accounts.json"
-_SAVES_DIR     = "saves"
 _lock          = Lock()
 
 def _write_json(path: str, data) -> None:
@@ -47,8 +48,8 @@ def get_or_create_user_id(email: str) -> int:
     accounts[email] = user_id
     save_accounts_index(accounts)
 
-    os.makedirs(_SAVES_DIR, exist_ok=True)
-    save_path = os.path.join(_SAVES_DIR, f"{user_id}.json")
+    os.makedirs(CHAR_SAVE_DIR, exist_ok=True)
+    save_path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
     _write_json(save_path, {"user_id": user_id, "characters": []})
     return user_id
 
@@ -59,7 +60,7 @@ def is_character_name_taken(name: str) -> bool:
     name = name.strip().lower()
     accounts = load_accounts()
     for user_id in accounts.values():
-        save_path = os.path.join(_SAVES_DIR, f"{user_id}.json")
+        save_path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
         try:
             with open(save_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -77,3 +78,25 @@ def build_popup_packet(message: str, disconnect: bool = False) -> bytes:
     buf.write_method_6(1 if disconnect else 0, 1)
     payload = buf.to_bytes()
     return struct.pack(">HH", 0x1B, len(payload)) + payload
+
+
+def load_characters(user_id: int) -> list[dict]:
+    path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
+    if not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return data.get("characters", [])
+
+
+def save_characters(user_id: int, char_list: list[dict]):
+    os.makedirs(CHAR_SAVE_DIR, exist_ok=True)
+    path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
+
+    data = {
+        "user_id": user_id,
+        "characters": char_list
+    }
+
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)

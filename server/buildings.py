@@ -1,6 +1,6 @@
 import time
 
-from Character import save_characters
+from accounts import save_characters
 from bitreader import BitReader
 from constants import find_building_data
 from globals import send_premium_purchase, send_building_complete_packet

@@ -2,7 +2,7 @@ import secrets
 import struct
 
 from BitBuffer import BitBuffer
-from Character import load_characters
+from accounts import load_characters
 from GameState import state
 from bitreader import BitReader
 from constants import Entity

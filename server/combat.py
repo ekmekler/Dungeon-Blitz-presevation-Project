@@ -1,7 +1,7 @@
 import struct
 
 from BitBuffer import BitBuffer
-from Character import save_characters
+from accounts import save_characters
 from bitreader import BitReader
 from constants import Entity, PowerType, GearType, class_64, class_1, EntType, class_21, Game
 from globals import send_consumable_update, build_change_offset_y_packet, GS

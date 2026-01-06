@@ -2,7 +2,7 @@ import struct
 import time
 
 from BitBuffer import BitBuffer
-from Character import save_characters
+from accounts import save_characters
 from bitreader import BitReader
 from constants import index_to_node_id, class_118, method_277, class_66, Game
 from globals import send_premium_purchase, send_talent_point_research_complete

@@ -10,7 +10,7 @@ from PolicyServer import start_policy_server
 from globals import HOST, PORTS, handle_entity_destroy_server, GS
 from scheduler import set_active_session_resolver
 from static_server import start_static_server
-from Character import save_characters
+from accounts import save_characters
 from level_config import LEVEL_CONFIG
 
 

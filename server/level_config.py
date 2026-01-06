@@ -3,7 +3,7 @@ import struct
 
 import missions
 from BitBuffer import BitBuffer
-from Character import load_characters, save_characters
+from accounts import load_characters, save_characters
 from WorldEnter import build_enter_world_packet
 from bitreader import BitReader
 from constants import door, class_119, Entity, _load_json

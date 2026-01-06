@@ -2,7 +2,7 @@ import struct
 import random
 import time
 
-from Character import save_characters
+from accounts import save_characters
 from bitreader import BitReader
 from constants import GearType, EntType, DyeType, Entity, class_3
 from BitBuffer import BitBuffer

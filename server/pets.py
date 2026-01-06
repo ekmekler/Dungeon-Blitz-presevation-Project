@@ -1,6 +1,6 @@
 import time
 
-from Character import save_characters
+from accounts import save_characters
 from bitreader import BitReader
 from constants import class_20, class_7, class_16, Game, EGG_TYPES, PET_TYPES
 from globals import build_hatchery_packet, pick_daily_eggs, send_premium_purchase, send_pet_training_complete, \

@@ -6,9 +6,9 @@ import secrets
 import struct
 import time
 
-from Character import load_characters, build_login_character_list_bitpacked, load_class_template, save_characters
+from Character import build_login_character_list_bitpacked, load_class_template
 from WorldEnter import build_enter_world_packet, Player_Data_Packet
-from accounts import get_or_create_user_id, load_accounts, build_popup_packet, _SAVES_DIR, is_character_name_taken
+from accounts import get_or_create_user_id, load_accounts, build_popup_packet, is_character_name_taken, load_characters, save_characters
 from ai_logic import AI_ENABLED, ensure_ai_loop, run_ai_loop
 from bitreader import BitReader
 from constants import EntType

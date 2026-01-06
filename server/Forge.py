@@ -3,7 +3,7 @@ import math
 import random
 import time
 
-from Character import save_characters
+from accounts import save_characters
 from bitreader import BitReader
 from constants import class_111, class_8, class_3, class_1, Game, class_64, \
     CHARM_DB, CONSUMABLE_BOOSTS, class_86, MATERIALS_DATA
