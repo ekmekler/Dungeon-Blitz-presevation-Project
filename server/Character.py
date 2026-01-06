@@ -3,7 +3,8 @@ import struct
 from BitBuffer import BitBuffer
 from accounts import save_characters
 from bitreader import BitReader
-from constants import GearType, Game
+from constants import GearType, Game, EntType
+from globals import GS
 
 # Hints Do not delete
 """
@@ -148,3 +149,111 @@ def handle_request_armory_gears(session, data):
 def get_inventory_gears(char: dict) -> list[tuple[int, int]]:
     inventory_gears = char.get("inventoryGears", [])
     return [(gear.get("gearID", 0), gear.get("tier", 0)) for gear in inventory_gears]
+
+
+LOOK_FIELDS = (
+    "headSet",
+    "hairSet",
+    "mouthSet",
+    "faceSet",
+    "gender",
+    "hairColor",
+    "skinColor",
+)
+
+
+def _apply_look_update(target: dict, values: dict) -> None:
+    for key in LOOK_FIELDS:
+        if key in values:
+            target[key] = values[key]
+
+
+def send_look_update_packet(
+    session,
+    *,
+    entity_id: int,
+    head: str,
+    hair: str,
+    mouth: str,
+    face: str,
+    gender: str,
+    hair_color: int,
+    skin_color: int,
+) -> None:
+    if not session or not session.conn:
+        return
+
+    bb = BitBuffer(debug=False)
+
+    bb.write_method_4(entity_id)
+    bb.write_method_13(head)
+    bb.write_method_13(hair)
+    bb.write_method_13(mouth)
+    bb.write_method_13(face)
+    bb.write_method_13(gender)
+    bb.write_method_6(hair_color, EntType.CHAR_COLOR_BITSTOSEND)
+    bb.write_method_6(skin_color, EntType.CHAR_COLOR_BITSTOSEND)
+
+    payload = bb.to_bytes()
+    packet = struct.pack(">HH", 0x8F, len(payload)) + payload
+
+    try:
+        session.conn.sendall(packet)
+    except OSError:
+        pass
+
+
+def handle_change_look(session, data: bytes) -> None:
+    if not session or not session.clientEntID:
+        return
+
+    br = BitReader(data[4:])
+
+    look = {
+        "headSet":  br.read_method_26(),
+        "hairSet":  br.read_method_26(),
+        "mouthSet": br.read_method_26(),
+        "faceSet":  br.read_method_26(),
+        "gender":   br.read_method_26(),
+        "hairColor": br.read_method_20(EntType.CHAR_COLOR_BITSTOSEND),
+        "skinColor": br.read_method_20(EntType.CHAR_COLOR_BITSTOSEND),
+    }
+
+    entity_id = session.clientEntID
+
+    ent = session.entities.get(entity_id)
+    if ent:
+        _apply_look_update(ent, look)
+
+    char = next(
+        (c for c in session.char_list if c.get("name") == session.current_character),
+        None
+    )
+
+    if not char:
+        print(f"[Look] ERROR: active character '{session.current_character}' not found")
+        return
+
+    _apply_look_update(char, look)
+    save_characters(session.user_id, session.char_list)
+
+    pkt_args = dict(
+        entity_id=entity_id,
+        head=look["headSet"],
+        hair=look["hairSet"],
+        mouth=look["mouthSet"],
+        face=look["faceSet"],
+        gender=look["gender"],
+        hair_color=look["hairColor"],
+        skin_color=look["skinColor"],
+    )
+
+    send_look_update_packet(session, **pkt_args)
+
+    for other in GS.all_sessions:
+        if (
+            other is not session
+            and other.player_spawned
+            and other.current_level == session.current_level
+        ):
+            send_look_update_packet(other, **pkt_args)
