@@ -6,6 +6,9 @@ from BitBuffer import BitBuffer
 from bitreader import BitReader
 from constants import GearType, Game
 
+CHAR_SAVE_DIR = "saves"
+SAVE_PATH_TEMPLATE = "saves/{user_id}.json"
+
 # Hints Do not delete
 """
   "gearSets": [
@@ -27,32 +30,27 @@ def load_class_template(class_name: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def build_level_gears_packet(gears: list[tuple[int, int]]) -> bytes:
-    buf = BitBuffer()
-    buf.write_method_4(len(gears))
-
-    for gear_id, tier in gears:
-        buf.write_method_6(gear_id, GearType.GEARTYPE_BITSTOSEND)      # 11 bits
-        buf.write_method_6(tier, GearType.const_176)    # 2 bits
-
-    payload = buf.to_bytes()
-    return struct.pack(">HH", 0xF5, len(payload)) + payload
-
-def handle_request_armory_gears(session, data):
-    br = BitReader(data[4:])
-    player_token = br.read_method_9()
-
-    char = session.current_char_dict
-
-    # Build and send the 0xF5 packet
-    gears = get_inventory_gears(char)
-    pkt = build_level_gears_packet(gears)
-    session.conn.sendall(pkt)
+def load_characters(user_id: int) -> list[dict]:
+    path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
+    if not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return data.get("characters", [])
 
 
-def get_inventory_gears(char: dict) -> list[tuple[int, int]]:
-    inventory_gears = char.get("inventoryGears", [])
-    return [(gear.get("gearID", 0), gear.get("tier", 0)) for gear in inventory_gears]
+def save_characters(user_id: int, char_list: list[dict]):
+    os.makedirs(CHAR_SAVE_DIR, exist_ok=True)
+    path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
+
+    data = {
+        "user_id": user_id,
+        "characters": char_list
+    }
+
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
 
 # ──────────────── Default full gear definitions ────────────────
 # Each sub-list is [GearID, Rune1, Rune2, Rune3, Color1, Color2]
@@ -82,31 +80,6 @@ DEFAULT_GEAR = {
         [0, 0, 0, 0, 0, 0],  # Boots
     ],
 }
-
-CHAR_SAVE_DIR = "saves"
-SAVE_PATH_TEMPLATE = "saves/{user_id}.json"
-
-def load_characters(user_id: int) -> list[dict]:
-    path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
-    if not os.path.exists(path):
-        return []
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return data.get("characters", [])
-
-
-def save_characters(user_id: int, char_list: list[dict]):
-    os.makedirs(CHAR_SAVE_DIR, exist_ok=True)
-    path = os.path.join(CHAR_SAVE_DIR, f"{user_id}.json")
-
-    data = {
-        "user_id": user_id,
-        "characters": char_list
-    }
-
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
 
 def build_paperdoll_packet(char):
     buf = BitBuffer()
@@ -179,3 +152,30 @@ def handle_alert_state_update(session, data):
     char["alertState"] = new
 
     save_characters(session.user_id, session.char_list)
+
+def build_level_gears_packet(gears: list[tuple[int, int]]) -> bytes:
+    buf = BitBuffer()
+    buf.write_method_4(len(gears))
+
+    for gear_id, tier in gears:
+        buf.write_method_6(gear_id, GearType.GEARTYPE_BITSTOSEND)      # 11 bits
+        buf.write_method_6(tier, GearType.const_176)    # 2 bits
+
+    payload = buf.to_bytes()
+    return struct.pack(">HH", 0xF5, len(payload)) + payload
+
+def handle_request_armory_gears(session, data):
+    br = BitReader(data[4:])
+    player_token = br.read_method_9()
+
+    char = session.current_char_dict
+
+    # Build and send the 0xF5 packet
+    gears = get_inventory_gears(char)
+    pkt = build_level_gears_packet(gears)
+    session.conn.sendall(pkt)
+
+
+def get_inventory_gears(char: dict) -> list[tuple[int, int]]:
+    inventory_gears = char.get("inventoryGears", [])
+    return [(gear.get("gearID", 0), gear.get("tier", 0)) for gear in inventory_gears]
