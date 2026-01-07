@@ -7,7 +7,7 @@ from accounts import load_characters, save_characters
 from WorldEnter import build_enter_world_packet
 from bitreader import BitReader
 from constants import door, class_119, Entity, _load_json
-from globals import send_admin_chat, handle_entity_destroy_server, all_sessions, GS
+from globals import send_admin_chat, handle_entity_destroy_server, all_sessions, GS, PORTS, HOST
 
 
 # witness the spaghetti code  down below :)
@@ -385,8 +385,8 @@ def handle_level_transfer_request(session, data):
         has_old_coord=has_old_coord,
         old_x=safe_old_x,
         old_y=safe_old_y,
-        host="127.0.0.1",
-        port=8080,
+        host=HOST,
+        port=PORTS[0],
         new_level_swf=new_swf,
         new_map_lvl=map_id,
         new_base_lvl=base_id,

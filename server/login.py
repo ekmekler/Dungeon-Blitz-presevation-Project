@@ -13,7 +13,7 @@ from ai_logic import AI_ENABLED, ensure_ai_loop, run_ai_loop
 from bitreader import BitReader
 from constants import EntType, load_class_template
 from entity import Send_Entity_Data, ensure_level_npcs
-from globals import SECRET, _level_add, all_sessions, GS
+from globals import SECRET, _level_add, all_sessions, GS, HOST, PORTS
 from level_config import LEVEL_CONFIG, get_spawn_coordinates
 from socials import get_group_for_session, online_group_members, update_session_group_cache, build_group_update_packet
 
@@ -137,8 +137,8 @@ def handle_login_character_create(session, data):
         has_old_coord=False,
         old_x=0,
         old_y=0,
-        host="127.0.0.1",
-        port=8080,
+        host=HOST,
+        port=PORTS[0],
         new_level_swf=level_config[0],
         new_map_lvl=level_config[1],
         new_base_lvl=level_config[2],
@@ -192,8 +192,8 @@ def handle_character_select(session, data):
             has_old_coord=False,
             old_x=0,
             old_y=0,
-            host="127.0.0.1",
-            port=8080,
+            host=HOST,
+            port=PORTS[0],
             new_level_swf=level_config[0],
             new_map_lvl=level_config[1],
             new_base_lvl=level_config[2],
