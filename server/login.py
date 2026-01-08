@@ -214,7 +214,7 @@ def handle_character_select(session, data):
 def handle_gameserver_login(session, data):
     br = BitReader(data[4:])
     token        = br.read_method_9()
-    previous_swf_name = br.read_method_26()
+    Level_Swf_name = br.read_method_26()
     first_login   = br.read_method_15()
 
     entry = GS.pending_world.get(token)
