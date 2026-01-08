@@ -274,13 +274,13 @@ def handle_level_transfer_request(session, data):
     """
 
     br = BitReader(data[4:])
-    old_token = br.read_method_9()
+    player_token = br.read_method_9()
     requested_level_name = br.read_method_13()
 
     # Resolve character + default target level from token tables
-    entry = GS.used_tokens.get(old_token) or GS.pending_world.get(old_token)
+    entry = GS.used_tokens.get(player_token) or GS.pending_world.get(player_token)
     if not entry:
-        s = GS.session_by_token.get(old_token)
+        s = GS.session_by_token.get(player_token)
         if s:
             entry = (
                 getattr(s, "current_char_dict", None) or {"name": s.current_character},
@@ -288,7 +288,7 @@ def handle_level_transfer_request(session, data):
             )
 
     if not entry:
-        print(f"[{session.addr}] ERROR: No character for token {old_token}")
+        print(f"[{session.addr}] ERROR: No character for token {player_token}")
         return
 
     char, default_target_level = entry[:2]
@@ -326,9 +326,9 @@ def handle_level_transfer_request(session, data):
 
     # Ensure we know user_id
     if not session.user_id:
-        token_info = GS.token_char.get(old_token)
+        token_info = GS.token_char.get(player_token)
         if not token_info:
-            print(f"[{session.addr}] ERROR: Could not resolve user_id for token {old_token}")
+            print(f"[{session.addr}] ERROR: Could not resolve user_id for token {player_token}")
             return
         session.user_id = token_info[0]
 
