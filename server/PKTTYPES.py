@@ -1,7 +1,9 @@
 
 from Character import handle_request_armory_gears, handle_alert_state_update, PaperDoll_Request, handle_change_look, \
     handle_apply_dyes
-from dev import DEVFLAG_MASTER_CLIENT
+from dev import DEVFLAG_MASTER_CLIENT, handle_quest_progress_update, handle_level_state, handle_play_sound, \
+    handle_action_update, handle_emote, handle_room_state_update, handle_room_event_start, handle_room_info_update, \
+    handle_set_untargetable, handle_room_close, handle_room_unlock, handle_set_level_complete
 from entity import handle_entity_full_update
 from globals import Client_Crash_Reports
 
@@ -396,6 +398,18 @@ PACKET_HANDLERS = {
     # dev.py
     ############################################
     0x1E:   DEVFLAG_MASTER_CLIENT,
+    0xB7:   handle_quest_progress_update,
+    0x40:   handle_level_state,
+    0xa8:   handle_play_sound,
+    0xaa:   handle_action_update,
+    0xA7:   handle_emote,
+    0xA9:   handle_room_state_update,
+    0xA5:   handle_room_event_start,
+    0xAB:   handle_room_info_update,
+    0xae:   handle_set_untargetable,
+    0xa6:   handle_room_close,
+    0xad:   handle_room_unlock,
+    0x3f:   handle_set_level_complete,
     ############################################
 
     # level_config.py
