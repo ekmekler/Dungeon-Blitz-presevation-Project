@@ -3,7 +3,7 @@ import random
 import time
 
 from bitreader import BitReader
-from constants import GearType, class_3
+from constants import GearType, class_3, PowerType
 from BitBuffer import BitBuffer
 from globals import build_start_skit_packet, GS
 from missions import get_mission_extra
@@ -20,6 +20,12 @@ def handle_badge_request(session, data):
     br = BitReader(data[4:])
     badge_key = br.read_method_26()
     print(f"[0x8D] Badge request: {badge_key}")
+
+#TODO...
+def handle_power_use(session, data):
+    br = BitReader(data[4:])
+    power = br.read_method_20(PowerType.const_423)
+    #print(f"power : {power}")
 
 
 #TODO...

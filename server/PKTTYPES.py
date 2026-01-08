@@ -7,7 +7,8 @@ from dev import DEVFLAG_MASTER_CLIENT, handle_quest_progress_update, handle_leve
 from entity import handle_entity_full_update
 from globals import Client_Crash_Reports
 
-from Commands import handle_badge_request, handle_linkupdater, handle_talk_to_npc, handle_lockbox_reward, handle_queue_potion, handle_hp_increase_notice, handle_grant_reward
+from Commands import handle_badge_request, handle_linkupdater, handle_talk_to_npc, handle_lockbox_reward, \
+    handle_queue_potion, handle_hp_increase_notice, handle_grant_reward, handle_power_use
 from Forge import handle_start_forge, handle_forge_speed_up_packet, handle_collect_forge_charm, handle_cancel_forge, handle_use_forge_xp_consumable, handle_allocate_magic_forge_artisan_skill_points, handle_magic_forge_reroll
 from buildings import handle_building_upgrade, handle_building_speed_up_request, handle_cancel_building_upgrade, handle_building_claim
 from combat import handle_entity_destroy, handle_buff_tick_dot, handle_respawn_broadcast, handle_request_respawn, handle_power_hit, handle_projectile_explode, handle_add_buff, handle_remove_buff, handle_change_max_speed, handle_power_cast, handle_change_offset_y, handle_char_regen, handle_char_regen_tick, handle_equip_rune, handle_update_equipment, handle_update_single_gear, handle_create_gearset, handle_name_gearset, handle_update_gearset
@@ -541,6 +542,7 @@ PACKET_HANDLERS = {
     0x10E:  handle_queue_potion,
     0xBB:   handle_hp_increase_notice,
     0x2A:   handle_grant_reward,
+    0xCB:   handle_power_use,
     ############################################
 
      # other
