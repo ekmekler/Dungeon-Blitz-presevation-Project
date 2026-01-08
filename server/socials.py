@@ -218,7 +218,7 @@ def handle_start_skit(session, data):
             except:
                 pass
 
-    print(f"[SKIT] Entity {entity_id} says: '{text}'")
+    #print(f"[SKIT] Entity {entity_id} says: '{text}'")
 
 
 def handle_emote_begin(session, data):
