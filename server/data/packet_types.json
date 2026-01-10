@@ -269,7 +269,7 @@
             {
                 "method": "write_method_4",
                 "value": "1",
-                "hint": ""
+                "hint": "result bar"
             },
             {
                 "method": "write_method_4",
