@@ -10,6 +10,12 @@ from missions import get_mission_extra
 
 
 #TODO...
+def handle_pickup_lootdrop(session, data):
+    br = BitReader(data[4:])
+    loot_id = br.read_method_9()
+    #print(f" loot id : {loot_id}")
+
+#TODO...
 def handle_queue_potion(session, data):
     br = BitReader(data[4:])
     queued_potion_id = br.read_method_20(class_3.const_69)
