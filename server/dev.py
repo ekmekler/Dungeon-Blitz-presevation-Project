@@ -219,3 +219,18 @@ def handle_room_boss_info(session, data):
             and other.current_level == session.current_level
         ):
             other.conn.sendall(data)
+
+
+def handle_emote_end(session, data):
+    br = BitReader(data[4:])
+    entity_id = br.read_method_4()
+
+    #print(f"[0x7F] EMOTE_END entity={entity_id}")
+
+    for other in GS.all_sessions:
+        if (
+            other is not session
+            and other.player_spawned
+            and other.current_level == session.current_level
+        ):
+            other.conn.sendall(data)

@@ -3,7 +3,7 @@ from Character import handle_request_armory_gears, handle_alert_state_update, Pa
     handle_apply_dyes
 from dev import DEVFLAG_MASTER_CLIENT, handle_quest_progress_update, handle_level_state, handle_play_sound, \
     handle_action_update, handle_emote, handle_room_state_update, handle_room_event_start, handle_room_info_update, \
-    handle_set_untargetable, handle_room_close, handle_room_unlock, handle_room_boss_info
+    handle_set_untargetable, handle_room_close, handle_room_unlock, handle_room_boss_info, handle_emote_end
 from entity import handle_entity_full_update
 from globals import Client_Crash_Reports
 
@@ -411,6 +411,7 @@ PACKET_HANDLERS = {
     0xa6:   handle_room_close,
     0xad:   handle_room_unlock,
     0xAC:   handle_room_boss_info,
+    0x7f:   handle_emote_end,
     ############################################
 
     # level_config.py
