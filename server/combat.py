@@ -501,18 +501,15 @@ def handle_equip_rune(session,  data):
         if not consume_charm(96):
             print(" Warning : Rune remover (96) missing from charms")
 
-    # Equip new rune
+    # Equip / Replace rune
     else:
-        gear["runes"][rune_idx] = rune_id
+        # Consume the new rune (always)
+        if not consume_charm(rune_id):
+            print(f" Warning : Rune {rune_id} missing from charms")
+            return
 
-    inv_gear = next(
-        (i for i in inventory if i["gearID"] == gear_id and i["tier"] == gear_tier),
-        None
-    )
-    if inv_gear:
-        inv_gear["runes"][rune_idx] = gear["runes"][rune_idx]
-    else:
-        inventory.append(gear.copy())
+        # Equip rune (even if same ID)
+        gear["runes"][rune_idx] = rune_id
 
     save_characters(session.user_id, session.char_list)
 
