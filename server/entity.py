@@ -21,7 +21,6 @@ Hints NPCs data
       "untargetable": false,
       "render_depth_offset": -15,
       "behavior_speed": 0.0,
-      "Linked_Mission": "NR_Mayor01", 
       "DramaAnim": "",
       "SleepAnim": "",
       "summonerId": 0,
@@ -35,14 +34,14 @@ Hints NPCs data
 
 ======== Intercatible NPCs Tips =====================
 - how to make the NPC interactable by the player
-- NPC will only become interactable if they have a "Linked_Mission" set and  "team" set to 3 
+- NPC will only become interactable if they have a "character_name" set and  "team" set to 3 
 
 - look at the "MissionTypes.Json" for these 2 lines on each mission : 
 
 "ContactName": "CaptainFink",
 "ReturnName": "NR_Mayor01", 
 
-For example the NPC with the "Linked_Mission": "NR_Mayor01",  will be linked to all the missions that have "ReturnName": "NR_Mayor01",  OR "ContactName": "NR_Mayor01",
+For example the NPC with the "character_name": "NR_Mayor01",  will be linked to all the missions that have "ReturnName": "NR_Mayor01",  OR "ContactName": "NR_Mayor01",
 
 - this will also show the NPCs name under his feet "NR_Mayor01" is "Mayor Ristas"
 
@@ -187,7 +186,7 @@ def Send_Entity_Data(entity: Dict[str, Any]) -> bytes:
         else:
             bb.write_method_6(0, 1)
 
-    for key in ("Linked_Mission", "DramaAnim", "SleepAnim"):
+    for key in ("character_name", "DramaAnim", "SleepAnim"):
         val = entity.get(key, "")
         bb.write_method_6(1 if val else 0, 1)
         if val:

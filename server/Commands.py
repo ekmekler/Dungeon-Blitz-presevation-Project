@@ -72,7 +72,7 @@ def handle_talk_to_npc(session, data):
 
     # NPC internal type name:
     # This is the ONLY correct name to compare missions with.
-    ent_type = npc.get("Linked_Mission") or npc.get("entType") or npc.get("name")
+    ent_type = npc.get("character_name") or npc.get("entType") or npc.get("name")
 
     # Normalize
     def norm(x):
@@ -103,13 +103,13 @@ def handle_talk_to_npc(session, data):
         contact = norm(mextra.get("ContactName"))
         ret     = norm(mextra.get("ReturnName"))
 
-        # Normalize them BEFORE matching (auto-map via Linked_Mission)
+        # Normalize them BEFORE matching (auto-map via character_name)
         if contact and contact != npc_type_norm:
-            # Allow Linked_Mission to solve mismatches
-            if norm(mextra.get("ContactName")) == norm(npc.get("Linked_Mission")):
+            # Allow character_name to solve mismatches
+            if norm(mextra.get("ContactName")) == norm(npc.get("character_name")):
                 contact = npc_type_norm
         if ret and ret != npc_type_norm:
-            if norm(mextra.get("ReturnName")) == norm(npc.get("Linked_Mission")):
+            if norm(mextra.get("ReturnName")) == norm(npc.get("character_name")):
                 ret = npc_type_norm
 
         # Mission state
