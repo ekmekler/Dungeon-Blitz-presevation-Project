@@ -21,6 +21,7 @@ Hints NPCs data
       "untargetable": false,
       "render_depth_offset": -15,
       "behavior_speed": 0.0,
+      "character_name": "NR_Mayor01", 
       "DramaAnim": "",
       "SleepAnim": "",
       "summonerId": 0,
