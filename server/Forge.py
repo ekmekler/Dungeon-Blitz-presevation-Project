@@ -430,38 +430,39 @@ def handle_magic_forge_reroll(session, data):
     char = next((c for c in session.char_list
                  if c.get("name") == session.current_character), None)
     mf = char.setdefault("magicForge", {})
-    primary = int(mf.get("primary", 0))
 
-    #  Deduct idols
+    server_usedlist = int(mf.get("usedlist", 0))
+
+    if server_usedlist == 0:
+        server_usedlist = 0
+
     forge_level = get_forge_level(mf)
     cost = class_8.FORGE_REROLL_COSTS[forge_level - 1]
-    current_idols = int(char.get("mammothIdols", 0))
-    char["mammothIdols"] = current_idols - cost
+    char["mammothIdols"] -= cost
     send_premium_purchase(session, "Forge Reroll", cost)
 
-    new_secondary = pick_unused_property(client_usedlist)
+    new_secondary = pick_unused_property(server_usedlist)
     if not new_secondary:
-        print("[Forge] ERROR: No unused properties but usedlist < 511")
         return
 
     new_tier = random.choice([1, 2])
+    server_usedlist |= (1 << (new_secondary - 1))
 
-    # Update server state
-    new_usedlist = client_usedlist | (1 << (new_secondary - 1))
-
-    mf["secondary"] = new_secondary
-    mf["secondary_tier"] = new_tier
-    mf["usedlist"] = new_usedlist
+    mf.update({
+        "secondary": new_secondary,
+        "secondary_tier": new_tier,
+        "usedlist": server_usedlist
+    })
 
     save_characters(session.user_id, session.char_list)
 
     send_forge_reroll_packet(
         session=session,
-        primary=primary,
+        primary=int(mf.get("primary", 0)),
         roll_a=mf.get("forge_roll_a", 0),
         roll_b=mf.get("forge_roll_b", 0),
         tier=new_tier,
         secondary=new_secondary,
-        usedlist=new_usedlist,
+        usedlist=server_usedlist,
         action="reroll"
     )
