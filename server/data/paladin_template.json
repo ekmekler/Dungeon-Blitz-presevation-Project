@@ -8831,10 +8831,8 @@
             "12": 0,
             "13": 5
         },
-        "hasSession": false,
         "primary": 0,
         "secondary": 0,
-        "status": 0,
         "ReadyTime": 0,
         "secondary_tier": 0,
         "usedlist": 0,

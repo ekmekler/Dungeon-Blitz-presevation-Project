@@ -161,8 +161,6 @@ def _on_forge_done_for(user_id: str, char_name: str, primary: int, secondary: in
     tier = 1 if secondary else 0
     usedlist = mf.get("usedlist", 0)
     mf.update({
-        "hasSession": False,
-        "status": class_111.const_264,
         "ReadyTime": 0,
         "forge_roll_a": forge_roll_a,
         "forge_roll_b": forge_roll_b,
@@ -337,9 +335,10 @@ def boot_scan_all_saves():
 
             # ─── Magic forge ───
             mf = char.get("magicForge")
-            if isinstance(mf, dict) and mf.get("hasSession") and mf.get("status") == class_111.const_286:
+            if isinstance(mf, dict):
                 rt = mf.get("ReadyTime", 0)
-                if rt > now:
+
+                if rt and rt > now:
                     schedule_forge(
                         user_id,
                         cname,
@@ -347,9 +346,6 @@ def boot_scan_all_saves():
                         mf.get("primary", 0),
                         mf.get("secondary", 0)
                     )
-                else:
-                    mf["hasSession"] = False
-                    mf["status"] = class_111.const_264
 
             # ─── Talent research ───
             tr = char.get("talentResearch")

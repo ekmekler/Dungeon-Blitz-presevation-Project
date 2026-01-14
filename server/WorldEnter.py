@@ -3,6 +3,8 @@ from typing import Dict
 from BitBuffer import BitBuffer
 import struct
 import time
+
+from Forge import resolve_magic_forge_state
 from constants import GearType, CLASS_NAME_TO_ID, class_64, NEWS_EVENTS, SLOT_BIT_WIDTHS, class_119, class_111, class_9, class_66, MASTERCLASS_TO_BUILDING, class_21, Game, Mission, Entity, class_7, class_16, class_118, class_1, class_10
 from globals import all_sessions
 from missions import get_total_mission_defs, get_mission_def
@@ -357,9 +359,11 @@ def Player_Data_Packet(char: dict,
 
         # ──────────────(magicForge)──────────────
         mf = char.get("magicForge", {})
+
         stats_dict = mf.get("stats_by_building", {})
         has_stats = bool(stats_dict)
         buf.write_method_11(1 if has_stats else 0, 1)
+
         if has_stats:
             cls = char.get("class", "").lower()
             seq = CLASS_BUILD_ORDER.get(cls, CLASS_BUILD_ORDER["paladin"])
@@ -367,31 +371,32 @@ def Player_Data_Packet(char: dict,
                 val = stats_dict.get(str(bid), 0)
                 buf.write_method_6(val, class_9.const_28)
 
-        # Session flag
-        has_session = mf.get("hasSession", False)
-        buf.write_method_11(1 if has_session else 0, 1)
+        forge = resolve_magic_forge_state(mf, now)
 
-        if has_session:
-            #  Primary gem ID
+        buf.write_method_11(1 if forge["has_session"] else 0, 1)
+
+        if forge["has_session"]:
             primary = mf.get("primary", 0)
             buf.write_method_6(primary, class_1.const_254)
 
-            #  In‑progress or completed?
-            status = mf.get("status", class_111.const_509)
-            if status == class_111.const_286:  # in-progress
-                buf.write_method_11(1, 1)
-                buf.write_method_4(mf.get("ReadyTime", 0))
+            if forge["in_progress"]:
+                buf.write_method_11(1, 1)  # crafting
+                buf.write_method_4(forge["ready_time"])  # end timestamp
             else:
-                buf.write_method_11(0, 1)
-                var_8 = mf.get("secondary_tier", 0)
-                buf.write_method_6(var_8, class_64.const_499)
-                if var_8:
+                buf.write_method_11(0, 1)  # finished
+
+                tier = mf.get("secondary_tier", 0)
+                buf.write_method_6(tier, class_64.const_499)
+
+                if tier > 0:
                     buf.write_method_6(mf.get("secondary", 0), class_64.const_218)
                     buf.write_method_6(mf.get("usedlist", 0), class_111.const_432)
 
-            # Always send these two when a session exists
+            # always sent when a session exists
             buf.write_method_91(min(mf.get("forge_roll_a", 0), 65535))
             buf.write_method_91(min(mf.get("forge_roll_b", 0), 65535))
+
+        # Extended forge flag
         buf.write_method_11(1 if mf.get("is_extended_forge", False) else 0, 1)
 
         # ──────────────(Skill Research)──────────────

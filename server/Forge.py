@@ -55,6 +55,31 @@ craftTalentPoints layout:
 #              Forge Function Helpers
 #########################################################
 
+def resolve_magic_forge_state(mf: dict, now: int) -> dict:
+    if not mf or not mf.get("primary"):
+        return {
+            "has_session": False,
+            "in_progress": False,
+            "completed": False
+        }
+
+    ready = mf.get("ReadyTime", 0)
+
+    if ready and ready > now:
+        return {
+            "has_session": True,
+            "in_progress": True,
+            "completed": False,
+            "ready_time": ready
+        }
+
+    return {
+        "has_session": True,
+        "in_progress": False,
+        "completed": True
+    }
+
+
 def get_forge_level(mf: dict) -> int:
     stats = mf.get("stats_by_building", {})
     lvl = stats.get("2", 1)
@@ -227,10 +252,8 @@ def handle_start_forge(session, data):
 
     mf = char.setdefault("magicForge", {})
     mf.update({
-        "hasSession": True,
         "primary": primary,
         "secondary": secondary,
-        "status": class_111.const_286,  # in progress
         "ReadyTime": end_ts,
         "secondary_tier": var_8,
         "usedlist": 0,
@@ -256,10 +279,6 @@ def handle_forge_speed_up_packet(session, data):
 
     mf = char.setdefault("magicForge", {})
 
-    if not mf.get("hasSession") or mf.get("status") != class_111.const_286:
-        print(f"[{session.addr}] No active forge session to speed-up")
-        return
-
 
     char["mammothIdols"] = max(0, int(char.get("mammothIdols", 0)) - idols_to_spend)
     send_premium_purchase(session, "Forge Speed-Up", idols_to_spend)
@@ -274,8 +293,6 @@ def handle_forge_speed_up_packet(session, data):
 
 
     mf.update({
-        "status": class_111.const_264,
-        "hasSession": True,
         "ReadyTime": 0,
         "forge_roll_a": random.randint(0, 65535),
         "forge_roll_b": random.randint(0, 65535),
@@ -335,10 +352,8 @@ def handle_collect_forge_charm(session, data):
         char["craftXP"] = new_xp
 
     mf.update({
-        "hasSession": False,
         "primary": 0,
         "secondary": 0,
-        "status": 0,
         "ReadyTime": 0,
         "secondary_tier": 0,
         "usedlist": 0,
@@ -355,8 +370,6 @@ def handle_cancel_forge(session, data):
     )
 
     mf = char.setdefault("magicForge", {})
-    mf["hasSession"] = False
-    mf["status"]     = 0
     mf["ReadyTime"]   = 0
     mf["primary"]    = 0
     mf["secondary"]  = 0
