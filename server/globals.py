@@ -173,7 +173,7 @@ def send_forge_reroll_packet(
     pkt = struct.pack(">HH", 0xCD, len(payload)) + payload
     session.conn.sendall(pkt)
 
-    print(f"[Forge] Sent {action} packet → primary={primary}, tier={tier}, secondary={secondary}, usedlist={usedlist}")
+
 
 
 def Client_Crash_Reports(session, data):
