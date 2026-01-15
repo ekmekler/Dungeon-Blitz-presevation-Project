@@ -19,9 +19,17 @@ def start_static_server(
                 pass
 
         def end_headers(self):
-            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
-            self.send_header("Pragma", "no-cache")
-            self.send_header("Expires", "0")
+            path = self.path.lower()
+
+            if path.endswith("devsettings.xml"):
+                # DEV ONLY: never cache  this one 
+                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Expires", "0")
+            else:
+                # NORMAL ASSETS
+                self.send_header("Cache-Control", "public")
+
             self.send_header("Access-Control-Allow-Origin", "*")
             super().end_headers()
 
