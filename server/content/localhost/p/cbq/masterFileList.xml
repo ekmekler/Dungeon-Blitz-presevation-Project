@@ -3,7 +3,6 @@
   <File  Version="cbp" Stage="Required"	Size="340" Name="UI_0.swf" />
   
   <File  Version="caa" Stage="Init"  Size="2"	 Name="Init.swz" />
-  <File  Version="dev" Stage="Init" Size="1818"  Name="devSettings.xml" />
 
   <File  Version="caf" Stage="Init"  Size="583"	 Name="Animation_Paladin.swf" />
   <File  Version="cbp" Stage="Init"  Size="559"	 Name="Animation_Mage.swf" />
