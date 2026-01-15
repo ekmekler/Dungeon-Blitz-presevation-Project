@@ -415,13 +415,17 @@ def handle_allocate_magic_forge_artisan_skill_points(session, data):
     char["craftTalentPoints"] = points
     save_characters(session.user_id, session.char_list)
 
-def pick_unused_property(client_usedlist: int) -> int:
-    """Return a random property ID (1-9) that is NOT in usedlist."""
-    available = [i for i in range(1, 10)
-                 if not (client_usedlist & (1 << (i - 1)))]
-    if not available:
-        return None
-    return random.choice(available)
+def pick_unused_property(usedlist: int, primary: int) -> int | None:
+
+    for realm_id in range(1, 10):
+        if realm_id == primary:
+            continue
+
+        bit = 1 << (realm_id - 1)
+        if not (usedlist & bit):
+            return realm_id
+
+    return None
 
 def handle_magic_forge_reroll(session, data):
     br = BitReader(data[4:])
@@ -431,6 +435,7 @@ def handle_magic_forge_reroll(session, data):
                  if c.get("name") == session.current_character), None)
     mf = char.setdefault("magicForge", {})
 
+    primary = int(mf.get("primary", 0))
     server_usedlist = int(mf.get("usedlist", 0))
 
     if server_usedlist == 0:
@@ -441,7 +446,7 @@ def handle_magic_forge_reroll(session, data):
     char["mammothIdols"] -= cost
     send_premium_purchase(session, "Forge Reroll", cost)
 
-    new_secondary = pick_unused_property(server_usedlist)
+    new_secondary = pick_unused_property(server_usedlist, primary)
     if not new_secondary:
         return
 
