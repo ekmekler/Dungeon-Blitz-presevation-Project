@@ -70,7 +70,6 @@ class ClientSession:
 
         # Entities / NPCs
         self.entities = {}            # {eid: props} for all tracked entities in this session
-        self.spawned_npcs = []        # list of NPC dicts spawned in this session
 
         # Misc
         self.player_data = {}
