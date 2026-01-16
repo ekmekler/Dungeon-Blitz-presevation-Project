@@ -9,6 +9,18 @@ from bitreader import BitReader
 from constants import door, class_119, Entity, _load_json
 from globals import send_admin_chat, handle_entity_destroy_server, all_sessions, GS, PORTS, HOST
 
+DATA_DIR = "data"
+
+_raw_level_config = _load_json(os.path.join(DATA_DIR, "level_config.json"), {})
+_door_list        = _load_json(os.path.join(DATA_DIR, "door_map.json"), [])
+
+DOOR_MAP = {tuple(k): v for k, v in _door_list if isinstance(k, list) and len(k) == 2}
+
+LEVEL_CONFIG = {
+    name: (p[0], int(p[1]), int(p[2]), p[3].lower() == "true")
+    for name, spec in _raw_level_config.items()
+    if (p := spec.split()) and len(p) >= 4
+}
 
 # witness the spaghetti code  down below :)
 
@@ -136,19 +148,6 @@ SPAWN_POINTS = {
     "--------VALHAVEN------------": "",
     "JadeCity": {"x": 10430.5, "y": 1058.99},
     "JadeCityHard": {"x": 10430.5, "y": 1058.99},
-}
-
-DATA_DIR = "data"
-
-_raw_level_config = _load_json(os.path.join(DATA_DIR, "level_config.json"), {})
-_door_list        = _load_json(os.path.join(DATA_DIR, "door_map.json"), [])
-
-DOOR_MAP = {tuple(k): v for k, v in _door_list if isinstance(k, list) and len(k) == 2}
-
-LEVEL_CONFIG = {
-    name: (p[0], int(p[1]), int(p[2]), p[3].lower() == "true")
-    for name, spec in _raw_level_config.items()
-    if (p := spec.split()) and len(p) >= 4
 }
 
 def is_dungeon_level(level_name: str) -> bool:
